@@ -1,0 +1,15 @@
+# Compiled MQL5
+*.ex5
+*.ex4
+
+# MT5 logs / tester
+*.log
+tester/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
