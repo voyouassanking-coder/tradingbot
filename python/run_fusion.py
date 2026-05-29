@@ -14,6 +14,14 @@ def tenkan(h,l,n=9): return (h.rolling(n).max()+l.rolling(n).min())/2.0
 def tr(h,l,c):
     pc=c.shift(1); return pd.concat([(h-l),(h-pc).abs(),(l-pc).abs()],axis=1).max(axis=1)
 def atr(h,l,c,n): return wilder(tr(h,l,c),n)
+def adx(h,l,c,n):
+    up=h.diff(); dn=-l.diff()
+    pdm=pd.Series(np.where((up>dn)&(up>0),up,0.0),index=h.index)
+    mdm=pd.Series(np.where((dn>up)&(dn>0),dn,0.0),index=h.index)
+    a=wilder(tr(h,l,c),n).replace(0,np.nan)
+    pdi=100*wilder(pdm,n)/a; mdi=100*wilder(mdm,n)/a
+    dx=(100*(pdi-mdi).abs()/(pdi+mdi)).fillna(0)
+    return wilder(dx,n).fillna(0)
 
 BAL0=3000.0; CONTRACT=1.0; VMIN=0.01; VSTEP=0.01
 
@@ -31,6 +39,10 @@ DEFAULT=dict(
     ipda_filter=False,      # premium/discount IPDA 20j (long en discount, short en premium)
     d1_mode=False,          # exige accord avec la bougie D1 EN COURS (open->close)
     ote_lo=0.62, ote_hi=0.79, swing_lb=30, fvg_lb=20, ipda_days=20,
+    # --- suggestions expert ---
+    use_adx=False, adx_min=25.0, adx_p=14,     # force de tendance
+    use_volume=False, vol_mult=1.0,            # confirmation volume (>moyenne)
+    trail_kijun=False,                         # trailing sur Kijun au lieu d'ATR (placeholder)
 )
 
 def load_m15(path):
@@ -81,6 +93,9 @@ def prep(m15, base_rule="1h"):
     h1["ipda_premium"]=(cc>mid)    # zone "chere" -> short
     # open de la bougie D1 EN COURS (premier open du jour, propage)
     h1["day_open"]=h1.groupby(h1.index.normalize())["open"].transform("first")
+    # ADX (force de tendance) + moyenne de volume (confirmation cassure)
+    h1["adx"]=adx(h1["high"],h1["low"],h1["close"],14)
+    h1["vol_ma"]=h1["tick_volume"].shift(1).rolling(20).mean()
     return h1,h4,d1
 
 def calc_lot(bal,sl_dist,risk_pct):
@@ -182,6 +197,13 @@ def run(h1,h4,d1,cfg,start=None,end=None,full=False):
             if np.isnan(dayopen): continue
             d1dir = 1 if c1>dayopen else -1
             if d1dir!=direction: continue
+
+        # ===== SUGGESTIONS EXPERT (un a un) =====
+        if c["use_adx"]:
+            if np.isnan(r1["adx"]) or r1["adx"]<c["adx_min"]: continue
+        if c["use_volume"]:
+            vma=r1["vol_ma"]
+            if np.isnan(vma) or r1["tick_volume"]<vma*c["vol_mult"]: continue
 
         sl_dist=abs(entry-sl)
         lot=calc_lot(bal,sl_dist,c["risk_pct"])

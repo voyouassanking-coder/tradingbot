@@ -9,11 +9,10 @@
 //|       kill-switch DD global                                       |
 //|                                                                   |
 //|   TF d'execution optimal (backtest 34 mois, compte 3000) :        |
-//|     M30 : PF 1.39 | DD 9.7% | +42% | 199 trades | sem.+ 56.9%     |
-//|           OOS PF 1.84 (69 trades) | 5/6 WF -> DEFAUT (objectif    |
-//|           gains+regularite hebdo)                                 |
-//|     H1  : PF 1.86 | DD 6.9% | +36% | 92 trades | sem.+ 51.5%      |
-//|           -> alternative si on privilegie le plus faible DD        |
+//|     M30 + ADX>20 (DEFAUT) : PF 1.57 | DD 6.6% | +50% | 157 trades |
+//|           sem.+ 56.7% | OOS PF 1.89 | 6/6 walk-forward            |
+//|     M30 sans ADX : PF 1.39 | DD 9.7% | sem.+ 56.9%                |
+//|     H1  : PF 1.86 | DD 6.9% (alternative, plus faible DD)         |
 //|                                                                   |
 //|   ⚠ AUCUN systeme ne gagne CHAQUE semaine. Objectif realiste :    |
 //|     esperance positive + ~55-60% de semaines vertes.              |
@@ -53,7 +52,9 @@ input int    EMA_Slow       = 200;
 input group "=== FILTRE STACK 6 MA + KIJUN ==="
 input bool   RequireMAStack = true;     // ★ coeur de la fusion
 input bool   UseFVGFilter   = true;     // ★ FVG : seul affinage SMC valide (PF 1.78->1.86)
-input int    FVG_Lookback   = 20;       // bougies H1 ou chercher un FVG dans le sens
+input int    FVG_Lookback   = 20;       // bougies ou chercher un FVG dans le sens
+input bool   UseADXFilter   = true;     // ★ ADX force de tendance (PF 1.39->1.57, DD 9.7->6.6, 6/6 WF)
+input double ADX_MinValue   = 20.0;     // seuil ADX (20 optimal ; >25 reduit la regularite)
 input int    St_EMA5        = 5;
 input int    St_EMA8        = 8;
 input int    St_EMA21       = 21;
@@ -100,7 +101,7 @@ input long   MagicNumber       = 20250777;
 input string EA_Comment        = "FusionBTC";
 
 //=== HANDLES =====================================================
-int hIchi, hEMAf, hEMAs, hATR_H1, hATR_H4;
+int hIchi, hEMAf, hEMAs, hATR_H1, hATR_H4, hADX;
 int hE5,hE8,hE21,hS55,hS100,hS200;
 double pointVal, tickSize, tickValueLoss;
 datetime lastBar=0, curDay=0;
@@ -124,6 +125,7 @@ int OnInit()
    hEMAs=iMA(_Symbol,InpBaseTF,EMA_Slow,0,MODE_EMA,PRICE_CLOSE);
    hATR_H1=iATR(_Symbol,InpBaseTF,ATR_Period);
    hATR_H4=iATR(_Symbol,PERIOD_H4,ATR_Period);
+   hADX=iADX(_Symbol,InpBaseTF,14);
    hE5 =iMA(_Symbol,InpBaseTF,St_EMA5, 0,MODE_EMA,PRICE_CLOSE);
    hE8 =iMA(_Symbol,InpBaseTF,St_EMA8, 0,MODE_EMA,PRICE_CLOSE);
    hE21=iMA(_Symbol,InpBaseTF,St_EMA21,0,MODE_EMA,PRICE_CLOSE);
@@ -133,7 +135,7 @@ int OnInit()
 
    if(hIchi==INVALID_HANDLE||hEMAf==INVALID_HANDLE||hEMAs==INVALID_HANDLE||
       hATR_H1==INVALID_HANDLE||hATR_H4==INVALID_HANDLE||hE5==INVALID_HANDLE||
-      hS200==INVALID_HANDLE)
+      hS200==INVALID_HANDLE||hADX==INVALID_HANDLE)
    { Print("Erreur handles"); return INIT_FAILED; }
 
    pointVal=SymbolInfoDouble(_Symbol,SYMBOL_POINT);
@@ -154,7 +156,7 @@ int OnInit()
 void OnDeinit(const int r)
 {
    IndicatorRelease(hIchi);IndicatorRelease(hEMAf);IndicatorRelease(hEMAs);
-   IndicatorRelease(hATR_H1);IndicatorRelease(hATR_H4);
+   IndicatorRelease(hATR_H1);IndicatorRelease(hATR_H4);IndicatorRelease(hADX);
    IndicatorRelease(hE5);IndicatorRelease(hE8);IndicatorRelease(hE21);
    IndicatorRelease(hS55);IndicatorRelease(hS100);IndicatorRelease(hS200);
    Comment("");
@@ -275,6 +277,13 @@ void OnTick()
    double spanA=Buf(hIchi,ICH_SPANA,1), spanB=Buf(hIchi,ICH_SPANB,1);
    double c1=iClose(_Symbol,InpBaseTF,1), o1=iOpen(_Symbol,InpBaseTF,1);
    if(atr<=0||ema200<=0||kijun<=0||atr<ATR_MinThreshold) return;
+
+   // ★ Filtre ADX : ne trader que les tendances reellement fortes
+   if(UseADXFilter)
+   {
+      double adxv=Buf(hADX,0,1);   // buffer 0 = ligne ADX principale, barre fermee
+      if(adxv<ADX_MinValue) return;
+   }
 
    bool bull=ema50>ema200, bear=ema50<ema200;
    double kt=MathMax(spanA,spanB), kb=MathMin(spanA,spanB);
