@@ -1,0 +1,39 @@
+Preparation...
+
+============================================================================================================
+AFFINAGE DES ENTREES — UN A LA FOIS (vs fusion de reference)
+============================================================================================================
+REF fusion (stack6MA)           net=  1057.4 n=  98 WR= 46.9% PF= 1.78 DD=  7.4% sem+= 50.0% medWk=   4.0
++ Engulfing selon tendance      net=   252.9 n=  39 WR= 38.5% PF= 1.42 DD=  6.4% sem+= 44.1% medWk= -19.6  ✗ pas mieux
++ OTE Fibonacci 0.62-0.79       net=    11.7 n=   2 WR= 50.0% PF= 1.59 DD=  0.7% sem+= 50.0% medWk=   5.9  ~ peu de trades
++ FVG retest (sens trade)       net=  1090.8 n=  92 WR= 47.8% PF= 1.86 DD=  6.9% sem+= 51.5% medWk=  13.7  ✓ ameliore
++ IPDA premium/discount 20j     net=   100.2 n=   6 WR= 50.0% PF= 2.55 DD=  1.6% sem+= 50.0% medWk=  14.8  ~ peu de trades
++ Mode D1 en cours              net=   851.5 n=  99 WR= 43.4% PF= 1.60 DD=  6.5% sem+= 47.9% medWk=  -5.6  ✗ pas mieux
+
+============================================================================================================
+COMBINAISONS prometteuses (+ IS/OOS)
+============================================================================================================
+
+Engulf + IPDA
+   FULL: net=    98.2 n=   2 WR=100.0% PF=999.00 DD=  0.0% sem+=100.0% medWk=  49.1
+   IS  : net=    51.0 n=   1 WR=100.0% PF=999.00 DD=  0.0% sem+=100.0% medWk=  51.0
+   OOS : net=    47.2 n=   1 WR=100.0% PF=999.00 DD=  0.0% sem+=100.0% medWk=  47.2
+   >> INCONCLUSIF (peu de trades)
+
+IPDA seul
+   FULL: net=   100.2 n=   6 WR= 50.0% PF= 2.55 DD=  1.6% sem+= 50.0% medWk=  14.8
+   IS  : net=     9.4 n=   3 WR= 33.3% PF= 1.20 DD=  1.6% sem+= 33.3% medWk= -19.0
+   OOS : net=    90.8 n=   3 WR= 66.7% PF= 6.16 DD=  0.6% sem+= 66.7% medWk=  47.2
+   >> INCONCLUSIF (peu de trades)
+
+Engulf seul
+   FULL: net=   252.9 n=  39 WR= 38.5% PF= 1.42 DD=  6.4% sem+= 44.1% medWk= -19.6
+   IS  : net=   139.2 n=  31 WR= 35.5% PF= 1.29 DD=  5.4% sem+= 42.3% medWk= -19.6
+   OOS : net=   145.1 n=   8 WR= 50.0% PF= 2.70 DD=  0.9% sem+= 50.0% medWk=  13.1
+   >> INCONCLUSIF (peu de trades)
+
+D1 mode + IPDA
+   FULL: net=   100.2 n=   6 WR= 50.0% PF= 2.55 DD=  1.6% sem+= 50.0% medWk=  14.8
+   IS  : net=     9.4 n=   3 WR= 33.3% PF= 1.20 DD=  1.6% sem+= 33.3% medWk= -19.0
+   OOS : net=    90.8 n=   3 WR= 66.7% PF= 6.16 DD=  0.6% sem+= 66.7% medWk=  47.2
+   >> INCONCLUSIF (peu de trades)

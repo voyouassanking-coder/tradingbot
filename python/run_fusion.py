@@ -24,6 +24,13 @@ DEFAULT=dict(
     global_dd_stop=None,         # F3
     use_session=False, sess_start=0, sess_end=24,
     run_A=True, run_B=True, run_C=True,
+    # --- affinage entrees SMC (testes un a un) ---
+    require_engulf=False,   # bougie de signal = engulfing dans le sens
+    require_ote=False,      # entree dans zone OTE 0.62-0.79 du dernier swing
+    require_fvg=False,      # FVG recent dans le sens du trade
+    ipda_filter=False,      # premium/discount IPDA 20j (long en discount, short en premium)
+    d1_mode=False,          # exige accord avec la bougie D1 EN COURS (open->close)
+    ote_lo=0.62, ote_hi=0.79, swing_lb=30, fvg_lb=20, ipda_days=20,
 )
 
 def load_m15(path):
@@ -51,6 +58,28 @@ def prep(m15):
         &(h1["s55"]<h1["s100"])&(h1["s100"]<h1["s200"])&(h1["close"]<h1["kijun"])&(h1["kijun"]<h1["s200"]))
     h1["stack"]=np.where(up,1,np.where(dn,-1,0))
     d1["ema200d"]=ema(d1["close"],200)
+
+    # --- precalculs SMC pour l'affinage des entrees ---
+    o=h1["open"]; hh=h1["high"]; ll=h1["low"]; cc=h1["close"]
+    # Engulfing (bougie fermee i vs i-1) : on lit ensuite en shift=1
+    h1["eng_bull"]=((cc>o)&(cc.shift(1)<o.shift(1))&(cc>=o.shift(1))&(o<=cc.shift(1)))
+    h1["eng_bear"]=((cc<o)&(cc.shift(1)>o.shift(1))&(cc<=o.shift(1))&(o>=cc.shift(1)))
+    # Swing pour OTE (sur swing_lb barres, decale)
+    h1["sw_hi"]=hh.rolling(30).max()
+    h1["sw_lo"]=ll.rolling(30).min()
+    # FVG 3 bougies : bull = low[i] > high[i-2] ; bear = high[i] < low[i-2]
+    h1["fvg_bull"]=(ll>hh.shift(2))
+    h1["fvg_bear"]=(hh<ll.shift(2))
+    h1["fvg_bull_any"]=h1["fvg_bull"].rolling(20).max().astype(bool)
+    h1["fvg_bear_any"]=h1["fvg_bear"].rolling(20).max().astype(bool)
+    # IPDA premium/discount sur 20 jours (~480 H1)
+    n=480
+    rngHi=hh.rolling(n).max(); rngLo=ll.rolling(n).min()
+    mid=(rngHi+rngLo)/2.0
+    h1["ipda_discount"]=(cc<mid)   # zone "pas chere" -> long
+    h1["ipda_premium"]=(cc>mid)    # zone "chere" -> short
+    # open de la bougie D1 EN COURS (premier open du jour, propage)
+    h1["day_open"]=h1.groupby(h1.index.normalize())["open"].transform("first")
     return h1,h4,d1
 
 def calc_lot(bal,sl_dist,risk_pct):
@@ -126,6 +155,33 @@ def run(h1,h4,d1,cfg,start=None,end=None,full=False):
         if not took or direction==0: continue
         # FILTRE STACK 6 MA (fusion)
         if c["require_ma_stack"] and stack!=direction: continue
+
+        # ===== AFFINAGE ENTREES SMC (testes un a un) =====
+        if c["require_engulf"]:
+            if direction>0 and not bool(r1["eng_bull"]): continue
+            if direction<0 and not bool(r1["eng_bear"]): continue
+        if c["require_ote"]:
+            swhi=r1["sw_hi"]; swlo=r1["sw_lo"]; rng=swhi-swlo
+            if rng<=0: continue
+            if direction>0:
+                lo=swhi-rng*c["ote_hi"]; hi=swhi-rng*c["ote_lo"]
+                if not (lo<=c1<=hi): continue
+            else:
+                lo=swlo+rng*c["ote_lo"]; hi=swlo+rng*c["ote_hi"]
+                if not (lo<=c1<=hi): continue
+        if c["require_fvg"]:
+            if direction>0 and not bool(r1["fvg_bull_any"]): continue
+            if direction<0 and not bool(r1["fvg_bear_any"]): continue
+        if c["ipda_filter"]:
+            if direction>0 and not bool(r1["ipda_discount"]): continue
+            if direction<0 and not bool(r1["ipda_premium"]): continue
+        if c["d1_mode"]:
+            # accord avec la bougie D1 EN COURS : sens = close H1 courant vs open du jour
+            dayopen=r1["day_open"]
+            if np.isnan(dayopen): continue
+            d1dir = 1 if c1>dayopen else -1
+            if d1dir!=direction: continue
+
         sl_dist=abs(entry-sl)
         lot=calc_lot(bal,sl_dist,c["risk_pct"])
         # garde-fou risque

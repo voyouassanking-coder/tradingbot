@@ -46,6 +46,8 @@ input int    EMA_Slow       = 200;
 //=== STACK 6 MA + KIJUN (filtre fusion) ==========================
 input group "=== FILTRE STACK 6 MA + KIJUN ==="
 input bool   RequireMAStack = true;     // ★ coeur de la fusion
+input bool   UseFVGFilter   = true;     // ★ FVG : seul affinage SMC valide (PF 1.78->1.86)
+input int    FVG_Lookback   = 20;       // bougies H1 ou chercher un FVG dans le sens
 input int    St_EMA5        = 5;
 input int    St_EMA8        = 8;
 input int    St_EMA21       = 21;
@@ -169,6 +171,21 @@ int StackDir()
 }
 
 double GetATR(int h){ double b[]; if(CopyBuffer(h,0,1,1,b)<1) return 0; return b[0]; }
+
+// FVG (Fair Value Gap) dans le sens 'dir' sur les FVG_Lookback dernieres H1.
+// Bull FVG : low[k] > high[k+2] (gap haussier) ; Bear : high[k] < low[k+2].
+bool HasFVG(int dir)
+{
+   if(!UseFVGFilter) return true;
+   for(int k=1;k<=FVG_Lookback;k++)
+   {
+      double lo_k =iLow(_Symbol,PERIOD_H1,k),   hi_k =iHigh(_Symbol,PERIOD_H1,k);
+      double hi_k2=iHigh(_Symbol,PERIOD_H1,k+2), lo_k2=iLow(_Symbol,PERIOD_H1,k+2);
+      if(dir>0 && lo_k>hi_k2) return true;
+      if(dir<0 && hi_k<lo_k2) return true;
+   }
+   return false;
+}
 
 //-- Valeur de perte par lot pour une distance SL, avec garde-fou anti-aberration
 //   (inspire de EA Gold CCI+MACD v2 : certains comptes/brokers renvoient un
@@ -301,6 +318,7 @@ void OnTick()
 //==================================================================
 void TryOpen(int dir,double sl,double tp,string tag)
 {
+   if(!HasFVG(dir)) return;   // ★ affinage FVG (active par defaut)
    double slDist=MathAbs(iClose(_Symbol,PERIOD_H1,1)-sl);
    double lot=CalcLot(slDist);
    if(lot<=0) return;
