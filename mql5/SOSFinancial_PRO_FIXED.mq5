@@ -17,10 +17,12 @@
 //|     FIX #12: BE arme une seule fois (flag par position)          |
 //+------------------------------------------------------------------+
 #property copyright "SOSFinancial PRO FIXED"
-#property version   "1.20"
-#property description "Multi-TF D1+H4+H1 + stack 6 MA — fixes BTC scalping"
+#property version   "1.30"
+#property description "Multi-TF D1+H4+H1 + stack 6 MA + garde-fous risque"
 // v1.2 : partial/BE OFF par defaut (pertes prematurees), RR2.5 SL1.5,
 //        filtre alignement 6 MA (EMA5/8/21 + SMA55/100/200) + Kijun.
+// v1.3 : kill-switch DD global, blocage trade si risque min-lot > %equity,
+//        plafond risque absolu USD. Adapte aux petits comptes (Exness).
 
 #include <Trade\Trade.mqh>
 
@@ -30,6 +32,9 @@ input double   InpRiskPercent      = 1.0;    // Risque par trade (%)
 input double   InpRewardRatio      = 2.5;    // Ratio Reward/Risk (RR) [v1.2: 2.5 valide backtest]
 input double   InpATR_SL_Mult      = 1.5;    // SL = ATR x multiplicateur [v1.2: 1.5]
 input double   InpMaxDailyDD       = 20.0;   // Drawdown journalier max (%)
+input double   InpGlobalDDStop     = 25.0;   // [v1.3] Kill-switch : stop si DD equity/pic >= % (0=off)
+input double   InpMaxRiskPctBlock  = 3.0;    // [v1.3] Skip trade si risque reel du lot > % equity (0=off)
+input double   InpMaxRiskUSD       = 0.0;    // [v1.3] Plafond absolu risque/trade en USD (0=off)
 
 input group "=== FILTRES ==="
 input double   InpMaxSpreadUSD     = 30.0;   // FIX #2 : Spread max en USD
@@ -123,6 +128,8 @@ datetime g_lastH1Bar     = 0;     // FIX #10
 datetime g_dayAnchorDate = 0;     // FIX #9
 double   g_dayAnchorEq   = 0.0;
 bool     g_ddLogged      = false; // FIX #9
+double   g_peakEquity    = 0.0;   // [v1.3] pic d'equity pour kill-switch DD global
+bool     g_globalHalt    = false; // [v1.3] EA stoppe (DD global atteint)
 int      g_totalBuy      = 0;
 int      g_totalSell     = 0;
 int      g_wins          = 0;
@@ -305,6 +312,71 @@ double CalcLotSize(double slDistance)
    if(lots<minLot) lots=minLot;
    if(lots>maxLot) lots=maxLot;
    return lots;
+}
+
+//+------------------------------------------------------------------+
+//| [v1.3] Risque reel en USD du lot reellement passe                |
+//+------------------------------------------------------------------+
+double RiskUSD(double slDistance, double lots)
+{
+   double tickSz = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   double tickVL = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE_LOSS);
+   if(tickSz<=0 || tickVL<=0) return 0;
+   return (slDistance / tickSz) * tickVL * lots;
+}
+
+//+------------------------------------------------------------------+
+//| [v1.3] Le trade est-il autorise vu les plafonds de risque ?      |
+//| Le lot plancher (0.01) peut imposer un risque > cible : on skip. |
+//+------------------------------------------------------------------+
+bool RiskAllowed(double slDistance, double lots)
+{
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   double r  = RiskUSD(slDistance, lots);
+   if(InpMaxRiskUSD > 0 && r > InpMaxRiskUSD)
+   {
+      if(InpVerbose) PrintFormat("⏭ Trade skip : risque %.2f USD > plafond %.2f", r, InpMaxRiskUSD);
+      return false;
+   }
+   if(InpMaxRiskPctBlock > 0 && eq > 0 && r > eq*InpMaxRiskPctBlock/100.0)
+   {
+      if(InpVerbose) PrintFormat("⏭ Trade skip : risque %.2f USD > %.1f%% equity (%.2f)",
+                                 r, InpMaxRiskPctBlock, eq*InpMaxRiskPctBlock/100.0);
+      return false;
+   }
+   return true;
+}
+
+//+------------------------------------------------------------------+
+//| [v1.3] Kill-switch DD global : stoppe l'EA et ferme tout         |
+//+------------------------------------------------------------------+
+bool GlobalDDHalt()
+{
+   if(InpGlobalDDStop <= 0) return false;
+   double eq = AccountInfoDouble(ACCOUNT_EQUITY);
+   if(eq > g_peakEquity) g_peakEquity = eq;
+   if(g_peakEquity <= 0) return false;
+   double gdd = (g_peakEquity - eq) / g_peakEquity * 100.0;
+   if(gdd >= InpGlobalDDStop)
+   {
+      if(!g_globalHalt)
+      {
+         PrintFormat("🚨 KILL-SWITCH : DD global %.2f%% >= %.1f%% — fermeture + arret EA",
+                     gdd, InpGlobalDDStop);
+         // ferme toutes les positions du magic
+         for(int i=PositionsTotal()-1;i>=0;i--)
+         {
+            ulong tk=PositionGetTicket(i);
+            if(tk && PositionSelectByTicket(tk) &&
+               PositionGetInteger(POSITION_MAGIC)==InpMagicNumber &&
+               PositionGetString(POSITION_SYMBOL)==_Symbol)
+               g_trade.PositionClose(tk);
+         }
+      }
+      g_globalHalt = true;
+      return true;
+   }
+   return false;
 }
 
 //+------------------------------------------------------------------+
@@ -547,6 +619,7 @@ void OpenBuy(bool volOK, bool silverOK, bool fibOK)
    if(slDist <= 0) return;
    double lots = CalcLotSize(slDist);
    if(lots<=0) return;
+   if(!RiskAllowed(slDist, lots)) return;   // [v1.3] garde-fou risque
 
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double sl  = ask - slDist;
@@ -579,6 +652,7 @@ void OpenSell(bool volOK, bool silverOK, bool fibOK)
    if(slDist <= 0) return;
    double lots = CalcLotSize(slDist);
    if(lots<=0) return;
+   if(!RiskAllowed(slDist, lots)) return;   // [v1.3] garde-fou risque
 
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double sl  = bid + slDist;
@@ -657,6 +731,7 @@ int OnInit()
    g_startBalance  = AccountInfoDouble(ACCOUNT_BALANCE);
    g_dayAnchorDate = TimeCurrent();
    g_dayAnchorEq   = AccountInfoDouble(ACCOUNT_EQUITY);
+   g_peakEquity    = AccountInfoDouble(ACCOUNT_EQUITY); // [v1.3]
 
    Print("✓ ", _Symbol, " | Risk ", InpRiskPercent, "% | RR 1:", InpRewardRatio);
    Print("✓ Session ", InpTradeHourStart, "h-", InpTradeHourEnd, "h (heure broker)");
@@ -681,6 +756,9 @@ void OnDeinit(const int reason)
 void OnTick()
 {
    ManagePositions();
+
+   // [v1.3] kill-switch DD global : ferme tout et bloque toute nouvelle entree
+   if(GlobalDDHalt() || g_globalHalt) { return; }
 
    if(!SpreadOK()||!VolatilityOK()||!SessionOK()) { Comment(""); return; }
    if(!DrawdownOK()) return;

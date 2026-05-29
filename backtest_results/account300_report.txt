@@ -1,0 +1,37 @@
+Preparation...
+
+====================================================================================================
+CONFIG #4 selon le CAPITAL (1 lot = 1 BTC, lot min 0.01)
+====================================================================================================
+ATR(H1) moyen ~505 USD -> SL ~757 USD -> perte/0.01 lot ~7.6 USD
+
+  Capital    150 USD | risque min-lot ~ 5.1%/trade | final=   414.7 net=   264.7 ret=  176.5% n=  94 WR= 38.3% PF= 1.53 DD= 23.7%
+  Capital    300 USD | risque min-lot ~ 2.5%/trade | final=   565.3 net=   265.3 ret=   88.5% n=  94 WR= 38.3% PF= 1.53 DD= 15.5%
+  Capital   1000 USD | risque min-lot ~ 0.8%/trade | final=  1269.0 net=   269.0 ret=   26.9% n=  94 WR= 38.3% PF= 1.46 DD=  5.9%
+  Capital   3000 USD | risque min-lot ~ 0.3%/trade | final=  3787.8 net=   787.8 ret=   26.3% n=  94 WR= 38.3% PF= 1.45 DD=  4.9%
+  Capital  10000 USD | risque min-lot ~ 0.1%/trade | final= 13013.5 net=  3013.5 ret=   30.1% n=  94 WR= 38.3% PF= 1.46 DD=  5.0%
+
+====================================================================================================
+COMPTE 300 USD — effet des GARDE-FOUS (un a la fois)
+====================================================================================================
+0. Sans garde-fou                           final=   565.3 net=   265.3 ret=   88.5% n=  94 WR= 38.3% PF= 1.53 DD= 15.5%
+1. + kill-switch DD global 25%              final=   565.3 net=   265.3 ret=   88.5% n=  94 WR= 38.3% PF= 1.53 DD= 15.5%
+2. + kill-switch DD global 15%              final=   368.2 net=    68.2 ret=   22.7% n=  57 WR= 35.1% PF= 1.26 DD= 15.5%
+3. + skip si risque min-lot >3% equity      final=   644.6 net=   344.6 ret=  114.9% n=  86 WR= 40.7% PF= 1.90 DD=  8.8%
+4. + skip si risque >5% + DD global 25%     final=   565.3 net=   265.3 ret=   88.5% n=  94 WR= 38.3% PF= 1.53 DD= 15.5%
+
+====================================================================================================
+IS / OOS — compte 300 + garde-fous (#4 ci-dessus)
+====================================================================================================
+  FULL: final=   565.3 net=   265.3 ret=   88.5% n=  94 WR= 38.3% PF= 1.53 DD= 15.5%
+  IS  : final=   411.9 net=   111.9 ret=   37.3% n=  69 WR= 36.2% PF= 1.33 DD= 15.5%
+  OOS : final=   475.9 net=   175.9 ret=   58.6% n=  24 WR= 45.8% PF= 2.24 DD=  8.7%
+
+====================================================================================================
+LEVIER 1:2000 — marge requise (ne change PAS le risque)
+====================================================================================================
+  Levier 1:100   -> marge pour 0.01 BTC (700 USD notionnel) =   7.00 USD
+  Levier 1:500   -> marge pour 0.01 BTC (700 USD notionnel) =   1.40 USD
+  Levier 1:2000  -> marge pour 0.01 BTC (700 USD notionnel) =   0.35 USD
+  => Avec 300 USD et 1:2000, tu peux ouvrir la position sans souci de marge.
+     MAIS si le SL saute, tu perds ~7.6 USD quel que soit le levier.

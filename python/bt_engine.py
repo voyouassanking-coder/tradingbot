@@ -41,6 +41,11 @@ DEFAULT = dict(
 
     max_dd_pct      = 20.0,
 
+    # --- garde-fous risque (nouveaux) ---
+    global_dd_stop  = None,   # kill-switch : stop definitif si DD equity depuis pic >= X%
+    max_risk_pct_block = None,# skip le trade si risque min-lot > X% equity
+    max_risk_usd    = None,   # plafond absolu $ : reduit pas le lot mais skip si min-lot depasse
+
     # --- knobs des variantes (off par defaut = baseline) ---
     allow_buy       = True,
     allow_sell      = True,
@@ -191,6 +196,7 @@ def run(m15, prep, cfg, start=None, end=None):
     eq_curve=[]; eq_dates=[]; trades=[]
     pos=None; cooldown=None
     day_date=None; day_anchor=bal; locked=False
+    peak_eq=bal; halted=False   # kill-switch DD global
 
     d1=prep["d1"].values; h4=prep["h4"].values; h1=prep["h1"].values
     atr_a=prep["atr"].values; vol_ok=prep["vol_ok"].values; ha_bull=prep["ha_bull"].values
@@ -253,6 +259,13 @@ def run(m15, prep, cfg, start=None, end=None):
 
         eq_curve.append(bal); eq_dates.append(ts)
 
+        # kill-switch DD global (sur balance, positions deja a plat ici)
+        if bal>peak_eq: peak_eq=bal
+        if c["global_dd_stop"] is not None and not halted:
+            gdd=(peak_eq-bal)/peak_eq*100.0
+            if gdd>=c["global_dd_stop"]: halted=True
+        if halted: continue
+
         if pos is None and not locked:
             if cooldown is not None and ts<cooldown: continue
             # session
@@ -296,6 +309,10 @@ def run(m15, prep, cfg, start=None, end=None):
             lots=np.floor(risk_money/(sld*c["contract_per_lot"])/c["vol_step"])*c["vol_step"]
             if lots<c["vol_min"]: lots=c["vol_min"]
             lots=round(lots,2)
+            # garde-fou : risque reel du lot retenu (lot plancher peut depasser la cible)
+            risk_real=sld*lots*c["contract_per_lot"]
+            if c["max_risk_usd"] is not None and risk_real>c["max_risk_usd"]: continue
+            if c["max_risk_pct_block"] is not None and risk_real>bal*c["max_risk_pct_block"]/100.0: continue
             pos=dict(open_time=ts, dir=direction, entry=entry, sl=sl, tp=tp,
                      lots=lots, initial_lots=lots, entry_spread=spreads[i],
                      partial_done=False, partial_pnl=0.0)
