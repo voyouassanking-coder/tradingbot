@@ -20,3 +20,10 @@ ADX>25
    OOS : net=   773.4 n=  51 WR= 49.0% PF= 2.11 DD=  3.2% sem+= 55.2% medWk=  24.2
    walk-forward : 5/6 fenetres +
    >> ROBUSTE
+
+ADX>20
+   FULL: net=  1515.1 n= 157 WR= 43.9% PF= 1.57 DD=  6.6% sem+= 56.7% medWk=   7.4
+   IS  : net=   707.9 n= 100 WR= 42.0% PF= 1.43 DD=  6.6% sem+= 56.7% medWk=   9.4
+   OOS : net=   676.7 n=  57 WR= 47.4% PF= 1.89 DD=  4.4% sem+= 60.0% medWk=  11.0
+   walk-forward : 6/6 fenetres +
+   >> ROBUSTE
