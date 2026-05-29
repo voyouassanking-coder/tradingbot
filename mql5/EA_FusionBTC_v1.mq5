@@ -65,8 +65,8 @@ input int    MinConfirmations = 3;      // ★ optimise
 input group "=== RISQUE + GARDE-FOUS ==="
 input double RiskPercent    = 1.0;
 input double MaxLotSize      = 2.0;
-input double MaxRiskPctBlock = 3.0;     // ★ skip si risque min-lot > % equity (0=off)
-input double GlobalDDStop    = 20.0;    // ★ kill-switch DD global % (0=off)
+input double MaxRiskPctBlock = 8.0;     // ★ skip si risque min-lot > % equity (300$=8 / 1000$+=3 / 0=off)
+input double GlobalDDStop    = 25.0;    // ★ kill-switch DD global % (0=off)
 input double MaxDailyLossPct = 4.0;
 input int    MaxDailyTrades   = 6;
 
@@ -170,22 +170,38 @@ int StackDir()
 
 double GetATR(int h){ double b[]; if(CopyBuffer(h,0,1,1,b)<1) return 0; return b[0]; }
 
+//-- Valeur de perte par lot pour une distance SL, avec garde-fou anti-aberration
+//   (inspire de EA Gold CCI+MACD v2 : certains comptes/brokers renvoient un
+//    TICK_VALUE_LOSS faux. On compare a contractSize*tickSize et on corrige.)
+double LossPerLot(double slDist)
+{
+   if(slDist<=0||tickSize<=0) return 0;
+   double tvl=tickValueLoss;
+   double contract=SymbolInfoDouble(_Symbol,SYMBOL_TRADE_CONTRACT_SIZE);
+   double expected=contract*tickSize;            // valeur attendue d'un tick / lot
+   if(expected>0 && (tvl<expected*0.5 || tvl>expected*5.0))
+   {
+      if(tvl!=expected) Print("⚠ TickValueLoss aberrant (",tvl,") -> corrige a ",expected);
+      tvl=expected;                              // fallback robuste
+   }
+   if(tvl<=0) return 0;
+   return (slDist/tickSize)*tvl;
+}
+
 double CalcLot(double slDist)
 {
-   if(slDist<=0||tickValueLoss<=0||tickSize<=0) return SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
-   double risk=AccountInfoDouble(ACCOUNT_EQUITY)*RiskPercent/100.0;
-   double lossPerLot=(slDist/tickSize)*tickValueLoss;
-   if(lossPerLot<=0) return SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
-   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
    double mn=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
-   double lot=MathFloor(risk/lossPerLot/step)*step;
+   double lpl=LossPerLot(slDist);
+   if(lpl<=0) return mn;
+   double risk=AccountInfoDouble(ACCOUNT_EQUITY)*RiskPercent/100.0;
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   double lot=MathFloor(risk/lpl/step)*step;
    return MathMax(mn,MathMin(MaxLotSize,lot));
 }
 
 double RiskUSD(double slDist,double lot)
 {
-   if(tickSize<=0||tickValueLoss<=0) return 0;
-   return (slDist/tickSize)*tickValueLoss*lot;
+   return LossPerLot(slDist)*lot;   // utilise le meme calcul corrige
 }
 
 bool RiskAllowed(double slDist,double lot)

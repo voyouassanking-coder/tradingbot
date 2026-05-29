@@ -58,7 +58,7 @@ def calc_lot(bal,sl_dist,risk_pct):
     lot=np.floor(bal*risk_pct/100.0/(sl_dist*CONTRACT)/VSTEP)*VSTEP
     return max(VMIN,round(lot,2))
 
-def run(h1,h4,d1,cfg,start=None,end=None):
+def run(h1,h4,d1,cfg,start=None,end=None,full=False):
     c=dict(DEFAULT); c.update(cfg)
     idx=h1.index; i0,i1=0,len(h1)
     if start: i0=int(idx.searchsorted(pd.Timestamp(start)))
@@ -133,6 +133,8 @@ def run(h1,h4,d1,cfg,start=None,end=None):
             if sl_dist*lot*CONTRACT > bal*c["max_risk_pct"]/100.0: continue
         pos=dict(dir=direction,entry=entry,sl=sl,tp=tp,lot=lot)
 
+    if full:
+        return _metrics(trades,eq,eqt), trades, eq, eqt
     return _metrics(trades,eq,eqt)
 
 def _metrics(trades,eq,eqt):
