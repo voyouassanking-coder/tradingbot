@@ -48,6 +48,7 @@ DEFAULT = dict(
     atr_rank_max    = None,   # percentile ATR maxi
     min_dist_ema200_pct = None,  # |dist EMA200| mini en % (filtre tendance forte)
     exit_on_opposite= False,  # sortie sur signal H1 oppose au lieu de SL/TP fixe
+    require_ma_stack= False,  # exiger l'alignement des 6 MA + Kijun (H1)
 
     contract_per_lot= 1.0,
     vol_min=0.01, vol_step=0.01,
@@ -141,6 +142,30 @@ def prepare(m15, c):
     vol_ok = (h1["tick_volume"].shift(1) >= h1["vol_avg4"]).reindex(idx, method="ffill")
     ha_bull= (h1["ha_close"].shift(1) > h1["ha_open"].shift(1)).reindex(idx, method="ffill")
 
+    # --- Stack des 6 MA + Kijun sur H1 (demande utilisateur) ---
+    # EMA5 > EMA8 > EMA21 > SMA55 > SMA100 > SMA200 (haussier) et inverse (baissier)
+    h1["ema5"]   = ema(h1["close"], 5)
+    h1["ema8"]   = ema(h1["close"], 8)
+    h1["ema21b"] = ema(h1["close"], 21)
+    h1["sma55"]  = h1["close"].rolling(55).mean()
+    h1["sma100"] = h1["close"].rolling(100).mean()
+    h1["sma200"] = h1["close"].rolling(200).mean()
+    h1["kijun26"]= kinjun(h1["high"], h1["low"], 26)
+
+    def ma_stack(r):
+        vals = [r["ema5"], r["ema8"], r["ema21b"], r["sma55"], r["sma100"], r["sma200"]]
+        if any(pd.isna(v) for v in vals) or pd.isna(r["kijun26"]):
+            return 0
+        # Haussier : strictement empile + prix et Kijun au-dessus de la plus lente
+        if (r["ema5"]>r["ema8"]>r["ema21b"]>r["sma55"]>r["sma100"]>r["sma200"]
+                and r["close"]>r["kijun26"] and r["kijun26"]>r["sma200"]):
+            return 1
+        if (r["ema5"]<r["ema8"]<r["ema21b"]<r["sma55"]<r["sma100"]<r["sma200"]
+                and r["close"]<r["kijun26"] and r["kijun26"]<r["sma200"]):
+            return -1
+        return 0
+    ma_stack_arr = h1.apply(ma_stack, axis=1).shift(1).reindex(idx, method="ffill")
+
     # contexte marche M15 pour filtres volatilite/tendance
     m15 = m15.copy()
     m15["atr14"]  = atr(m15["high"],m15["low"],m15["close"],14)
@@ -153,7 +178,8 @@ def prepare(m15, c):
 
     return dict(d1=d1_arr, h4=h4_arr, h1=h1_arr, atr=atr_arr,
                 vol_ok=vol_ok, ha_bull=ha_bull,
-                atr_rank=atr_rank, dist200=dist200)
+                atr_rank=atr_rank, dist200=dist200,
+                ma_stack=ma_stack_arr)
 
 
 def run(m15, prep, cfg, start=None, end=None):
@@ -169,6 +195,7 @@ def run(m15, prep, cfg, start=None, end=None):
     d1=prep["d1"].values; h4=prep["h4"].values; h1=prep["h1"].values
     atr_a=prep["atr"].values; vol_ok=prep["vol_ok"].values; ha_bull=prep["ha_bull"].values
     atr_rank=prep["atr_rank"].values; dist200=prep["dist200"].values
+    ma_stack=prep["ma_stack"].values
 
     opens=m15["open"].values; highs=m15["high"].values; lows=m15["low"].values
     closes=m15["close"].values; spreads=m15["spread_usd"].values
@@ -244,6 +271,9 @@ def run(m15, prep, cfg, start=None, end=None):
             if direction==0: continue
             if direction>0 and not c["allow_buy"]: continue
             if direction<0 and not c["allow_sell"]: continue
+            # filtre alignement des 6 MA + Kijun (H1)
+            if c["require_ma_stack"]:
+                if np.isnan(ma_stack[i]) or int(ma_stack[i]) != direction: continue
             if c["use_volume"] and not bool(vol_ok[i]): continue
             if c["use_ha"]:
                 if direction>0 and not bool(ha_bull[i]): continue

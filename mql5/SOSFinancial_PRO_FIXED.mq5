@@ -17,16 +17,18 @@
 //|     FIX #12: BE arme une seule fois (flag par position)          |
 //+------------------------------------------------------------------+
 #property copyright "SOSFinancial PRO FIXED"
-#property version   "1.10"
-#property description "Multi-TF D1+H4+H1 — fixes BTC scalping"
+#property version   "1.20"
+#property description "Multi-TF D1+H4+H1 + stack 6 MA — fixes BTC scalping"
+// v1.2 : partial/BE OFF par defaut (pertes prematurees), RR2.5 SL1.5,
+//        filtre alignement 6 MA (EMA5/8/21 + SMA55/100/200) + Kijun.
 
 #include <Trade\Trade.mqh>
 
 //=== PARAMETRES UTILISATEUR =======================================
 input group "=== GESTION DU RISQUE ==="
 input double   InpRiskPercent      = 1.0;    // Risque par trade (%)
-input double   InpRewardRatio      = 1.5;    // Ratio Reward/Risk (RR)
-input double   InpATR_SL_Mult      = 1.0;    // SL = ATR x multiplicateur
+input double   InpRewardRatio      = 2.5;    // Ratio Reward/Risk (RR) [v1.2: 2.5 valide backtest]
+input double   InpATR_SL_Mult      = 1.5;    // SL = ATR x multiplicateur [v1.2: 1.5]
 input double   InpMaxDailyDD       = 20.0;   // Drawdown journalier max (%)
 
 input group "=== FILTRES ==="
@@ -39,10 +41,10 @@ input bool     InpSkipWeekend      = false;  // BTC 24/7 par defaut
 input bool     InpSkipFridayLate   = false;  // idem
 
 input group "=== PARTIAL CLOSE & BREAK-EVEN ==="
-input bool     InpUsePartialClose  = true;
+input bool     InpUsePartialClose  = false;  // [v1.2] OFF : provoquait des pertes prematurees
 input double   InpPartialUSD       = 150.0;  // FIX #3 : declenche partial a +X USD
 input double   InpPartialRatio     = 0.5;    // Ratio a fermer
-input bool     InpUseBreakEven     = true;
+input bool     InpUseBreakEven     = false;  // [v1.2] OFF : provoquait des pertes prematurees
 input double   InpBreakEvenUSD     = 5.0;    // FIX #3 : offset BE en USD
 
 input group "=== INDICATEURS ==="
@@ -74,13 +76,26 @@ input bool     InpUseSilverTrend   = true;
 input bool     InpUseFibFilter     = false;
 input double   InpFib_Level        = 0.618;
 
+input group "=== STACK 6 MOYENNES MOBILES + KIJUN (v1.2) ==="
+// Positions optimales seulement quand TOUTES les MA sont alignees :
+// EMA5 > EMA8 > EMA21 > SMA55 > SMA100 > SMA200 (achat) et inverse (vente)
+input bool     InpRequireMAStack   = true;   // Exiger l'alignement complet des 6 MA + Kijun
+input ENUM_TIMEFRAMES InpStackTF    = PERIOD_H1; // TF d'evaluation du stack
+input int      InpStackEMA5         = 5;
+input int      InpStackEMA8         = 8;
+input int      InpStackEMA21        = 21;
+input int      InpStackSMA55        = 55;
+input int      InpStackSMA100       = 100;
+input int      InpStackSMA200       = 200;
+input int      InpStackKijun        = 26;    // Kijun-Sen (confirmation)
+
 input group "=== AVANCE ==="
 input bool     InpRestrictSymbols  = false;  // FIX #1 : whitelist desactivee par defaut
 input bool     InpEvalOnH1CloseOnly= true;   // FIX #10
 input long     InpMagicNumber      = 202502;
 
 //=== CONSTANTES INTERNES ==========================================
-#define EA_NAME "SOSFinancial PRO FIXED v1.1"
+#define EA_NAME "SOSFinancial PRO FIXED v1.2"
 
 string SupportedSymbols[] = {"XAUUSD","XAGEUR","XAGUSD","CHFJPY","UKOIL","USOIL",
                              "BTCUSD","BTCUSDm","BTCUSDc","BTCUSDi"};  // FIX #1
@@ -96,6 +111,10 @@ int h_RSI_H4=INVALID_HANDLE,   h_ADX_H4=INVALID_HANDLE;
 int h_EMA21_H1=INVALID_HANDLE, h_EMA50_H1=INVALID_HANDLE;
 int h_RSI_H1=INVALID_HANDLE,   h_ATR_H1=INVALID_HANDLE;
 int h_ATR_CUR=INVALID_HANDLE;
+// Stack 6 MA + Kijun (v1.2)
+int h_S_EMA5=INVALID_HANDLE,  h_S_EMA8=INVALID_HANDLE,  h_S_EMA21=INVALID_HANDLE;
+int h_S_SMA55=INVALID_HANDLE, h_S_SMA100=INVALID_HANDLE,h_S_SMA200=INVALID_HANDLE;
+int h_S_KIJUN=INVALID_HANDLE;
 
 //=== VARIABLES GLOBALES ===========================================
 CTrade   g_trade;
@@ -236,9 +255,18 @@ bool InitIndicators()
    h_ATR_H1    = iATR(_Symbol, PERIOD_H1, InpATRPeriod);
    h_ATR_CUR   = iATR(_Symbol, PERIOD_CURRENT, InpATRPeriod);
 
+   // Stack 6 MA + Kijun (v1.2)
+   h_S_EMA5   = iMA(_Symbol, InpStackTF, InpStackEMA5,   0, MODE_EMA, PRICE_CLOSE);
+   h_S_EMA8   = iMA(_Symbol, InpStackTF, InpStackEMA8,   0, MODE_EMA, PRICE_CLOSE);
+   h_S_EMA21  = iMA(_Symbol, InpStackTF, InpStackEMA21,  0, MODE_EMA, PRICE_CLOSE);
+   h_S_SMA55  = iMA(_Symbol, InpStackTF, InpStackSMA55,  0, MODE_SMA, PRICE_CLOSE);
+   h_S_SMA100 = iMA(_Symbol, InpStackTF, InpStackSMA100, 0, MODE_SMA, PRICE_CLOSE);
+   h_S_SMA200 = iMA(_Symbol, InpStackTF, InpStackSMA200, 0, MODE_SMA, PRICE_CLOSE);
+
    if(h_EMA21_D1==INVALID_HANDLE || h_RSI_D1==INVALID_HANDLE ||
       h_EMA21_H4==INVALID_HANDLE || h_EMA21_H1==INVALID_HANDLE ||
-      h_ATR_H1  ==INVALID_HANDLE || h_ATR_CUR ==INVALID_HANDLE) {
+      h_ATR_H1  ==INVALID_HANDLE || h_ATR_CUR ==INVALID_HANDLE ||
+      h_S_EMA5  ==INVALID_HANDLE || h_S_SMA200==INVALID_HANDLE) {
       Print("✗ Erreur creation indicateurs : ", GetLastError());
       return false;
    }
@@ -249,7 +277,8 @@ void ReleaseIndicators()
 {
    int arr[] = {h_EMA21_D1,h_EMA50_D1,h_EMA200_D1,h_RSI_D1,h_ADX_D1,h_ATR_D1,
                 h_EMA21_H4,h_EMA50_H4,h_RSI_H4,h_ADX_H4,
-                h_EMA21_H1,h_EMA50_H1,h_RSI_H1,h_ATR_H1,h_ATR_CUR};
+                h_EMA21_H1,h_EMA50_H1,h_RSI_H1,h_ATR_H1,h_ATR_CUR,
+                h_S_EMA5,h_S_EMA8,h_S_EMA21,h_S_SMA55,h_S_SMA100,h_S_SMA200};
    for(int i=0;i<ArraySize(arr);i++)
       if(arr[i]!=INVALID_HANDLE) IndicatorRelease(arr[i]);
 }
@@ -315,6 +344,35 @@ ETrend AnalyzeH4()
    if(ema21>ema50 && price>kinjun && rsi>InpH4_RSI_Up && adx>InpH4_ADX_Min) return TR_UP;
    if(ema21<ema50 && price<kinjun && rsi<InpH4_RSI_Down && adx>InpH4_ADX_Min) return TR_DOWN;
    return TR_NONE;
+}
+
+//+------------------------------------------------------------------+
+//| Alignement des 6 MA + Kijun (v1.2)                               |
+//| Retourne +1 (stack haussier), -1 (baissier), 0 (non aligne)     |
+//| Lu sur barre fermee (shift=1).                                   |
+//+------------------------------------------------------------------+
+int MAStackDir()
+{
+   double e5  = BufVal(h_S_EMA5,   0, 1);
+   double e8  = BufVal(h_S_EMA8,   0, 1);
+   double e21 = BufVal(h_S_EMA21,  0, 1);
+   double s55 = BufVal(h_S_SMA55,  0, 1);
+   double s100= BufVal(h_S_SMA100, 0, 1);
+   double s200= BufVal(h_S_SMA200, 0, 1);
+   double kij = Kinjun(InpStackTF, 1);
+   double px  = iClose(_Symbol, InpStackTF, 1);
+
+   if(e5==EMPTY_VALUE||e8==EMPTY_VALUE||e21==EMPTY_VALUE||
+      s55==EMPTY_VALUE||s100==EMPTY_VALUE||s200==EMPTY_VALUE||kij==EMPTY_VALUE)
+      return 0;
+
+   // Haussier : EMA5>EMA8>EMA21>SMA55>SMA100>SMA200, prix et Kijun au-dessus
+   if(e5>e8 && e8>e21 && e21>s55 && s55>s100 && s100>s200 && px>kij && kij>s200)
+      return 1;
+   // Baissier : ordre inverse
+   if(e5<e8 && e8<e21 && e21<s55 && s55<s100 && s100<s200 && px<kij && kij<s200)
+      return -1;
+   return 0;
 }
 
 ESignal AnalyzeH1()
@@ -643,11 +701,14 @@ void OnTick()
    bool silverOK = SilverTrendOK(h1);
    bool fibOK    = FibOK(h1);
 
+   // v1.2 : filtre alignement des 6 MA + Kijun
+   int stack = InpRequireMAStack ? MAStackDir() : 99; // 99 = filtre desactive
+
    if(PositionsTotal() == 0)
    {
-      if(d1==TR_UP && h4==TR_UP && h1==SG_BUY)
+      if(d1==TR_UP && h4==TR_UP && h1==SG_BUY && (stack==1 || stack==99))
          OpenBuy(volOK, silverOK, fibOK);
-      else if(d1==TR_DOWN && h4==TR_DOWN && h1==SG_SELL)
+      else if(d1==TR_DOWN && h4==TR_DOWN && h1==SG_SELL && (stack==-1 || stack==99))
          OpenSell(volOK, silverOK, fibOK);
    }
 
