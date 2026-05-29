@@ -40,6 +40,7 @@ DEFAULT=dict(
     d1_mode=False,          # exige accord avec la bougie D1 EN COURS (open->close)
     ote_lo=0.62, ote_hi=0.79, swing_lb=30, fvg_lb=20, ipda_days=20,
     # --- suggestions expert ---
+    use_master_bias=False,                     # n'autoriser que le sens de la tendance D1
     use_adx=False, adx_min=25.0, adx_p=14,     # force de tendance
     use_volume=False, vol_mult=1.0,            # confirmation volume (>moyenne)
     trail_kijun=False,                         # trailing sur Kijun au lieu d'ATR (placeholder)
@@ -71,6 +72,11 @@ def prep(m15, base_rule="1h"):
         &(h1["s55"]<h1["s100"])&(h1["s100"]<h1["s200"])&(h1["close"]<h1["kijun"])&(h1["kijun"]<h1["s200"]))
     h1["stack"]=np.where(up,1,np.where(dn,-1,0))
     d1["ema200d"]=ema(d1["close"],200)
+    d1["ema50d"]=ema(d1["close"],50)
+    # MASTER BIAS (tendance directrice D1) : +1 haussier / -1 baissier / 0 neutre
+    mb=np.where((d1["close"]>d1["ema200d"])&(d1["ema50d"]>d1["ema200d"]),1,
+        np.where((d1["close"]<d1["ema200d"])&(d1["ema50d"]<d1["ema200d"]),-1,0))
+    d1["master_bias"]=mb
 
     # --- precalculs SMC pour l'affinage des entrees ---
     o=h1["open"]; hh=h1["high"]; ll=h1["low"]; cc=h1["close"]
@@ -169,6 +175,11 @@ def run(h1,h4,d1,cfg,start=None,end=None,full=False):
                     direction=-1; sl=entry+SLm*2.0*av; tp=entry-TPm*2.5*av; took=True
 
         if not took or direction==0: continue
+        # MASTER BIAS : n'autoriser que le sens de la tendance directrice D1
+        if c["use_master_bias"]:
+            dpb=d1.index.searchsorted(idx[i],side="right")
+            mbias=int(d1["master_bias"].iloc[dpb-1]) if dpb>=1 else 0
+            if mbias!=direction: continue
         # FILTRE STACK 6 MA (fusion)
         if c["require_ma_stack"] and stack!=direction: continue
 

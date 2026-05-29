@@ -21,7 +21,7 @@
 //|   ⚠ AUCUN systeme ne gagne CHAQUE semaine.                        |
 //+==================================================================+
 #property copyright "FusionBTC"
-#property version   "1.30"
+#property version   "1.40"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -43,6 +43,12 @@ input bool   RunStrategyC   = true;     // Pullback Kijun en tendance D1
 //=== ICHIMOKU / EMA ==============================================
 input group "=== TIMEFRAME D'EXECUTION ==="
 input ENUM_TIMEFRAMES InpBaseTF = PERIOD_M30; // ★ M30 optimal (gains+regularite) ; H1 = DD plus bas
+
+input group "=== MASTER BIAS (sens autorise) ==="
+input bool   UseMasterBias  = true;          // ★ v1.4 : n'autoriser que le sens de la tendance directrice
+input ENUM_TIMEFRAMES MasterBiasTF = PERIOD_D1; // TF de la tendance de fond (D1 recommande)
+input int    MB_EMA_Fast    = 50;
+input int    MB_EMA_Slow    = 200;
 
 input group "=== ICHIMOKU / EMA ==="
 input int    Ich_Tenkan     = 9;
@@ -109,6 +115,7 @@ input string EA_Comment        = "FusionBTC";
 //=== HANDLES =====================================================
 int hIchi, hEMAf, hEMAs, hATR_H1, hATR_H4, hADX;
 int hE5,hE8,hE21,hS55,hS100,hS200;
+int hMB50, hMB200;   // EMA tendance directrice (Master Bias)
 double pointVal, tickSize, tickValueLoss;
 datetime lastBar=0, curDay=0;
 int    dailyTrades=0;
@@ -138,10 +145,13 @@ int OnInit()
    hS55=iMA(_Symbol,InpBaseTF,St_SMA55,0,MODE_SMA,PRICE_CLOSE);
    hS100=iMA(_Symbol,InpBaseTF,St_SMA100,0,MODE_SMA,PRICE_CLOSE);
    hS200=iMA(_Symbol,InpBaseTF,St_SMA200,0,MODE_SMA,PRICE_CLOSE);
+   hMB50 =iMA(_Symbol,MasterBiasTF,MB_EMA_Fast,0,MODE_EMA,PRICE_CLOSE);
+   hMB200=iMA(_Symbol,MasterBiasTF,MB_EMA_Slow,0,MODE_EMA,PRICE_CLOSE);
 
    if(hIchi==INVALID_HANDLE||hEMAf==INVALID_HANDLE||hEMAs==INVALID_HANDLE||
       hATR_H1==INVALID_HANDLE||hATR_H4==INVALID_HANDLE||hE5==INVALID_HANDLE||
-      hS200==INVALID_HANDLE||hADX==INVALID_HANDLE)
+      hS200==INVALID_HANDLE||hADX==INVALID_HANDLE||
+      hMB50==INVALID_HANDLE||hMB200==INVALID_HANDLE)
    { Print("Erreur handles"); return INIT_FAILED; }
 
    pointVal=SymbolInfoDouble(_Symbol,SYMBOL_POINT);
@@ -163,6 +173,7 @@ void OnDeinit(const int r)
 {
    IndicatorRelease(hIchi);IndicatorRelease(hEMAf);IndicatorRelease(hEMAs);
    IndicatorRelease(hATR_H1);IndicatorRelease(hATR_H4);IndicatorRelease(hADX);
+   IndicatorRelease(hMB50);IndicatorRelease(hMB200);
    IndicatorRelease(hE5);IndicatorRelease(hE8);IndicatorRelease(hE21);
    IndicatorRelease(hS55);IndicatorRelease(hS100);IndicatorRelease(hS200);
    Comment("");
@@ -196,6 +207,19 @@ int StackDir()
 }
 
 double GetATR(int h){ double b[]; if(CopyBuffer(h,0,1,1,b)<1) return 0; return b[0]; }
+
+// Master Bias : tendance directrice sur MasterBiasTF (D1 par defaut).
+// +1 haussier (seulement BUY) / -1 baissier (seulement SELL) / 0 neutre (rien)
+int MasterBias()
+{
+   double e50 =Buf(hMB50, 0,1);
+   double e200=Buf(hMB200,0,1);
+   double px  =iClose(_Symbol,MasterBiasTF,1);
+   if(e50==0||e200==0||px==0) return 0;
+   if(px>e200 && e50>e200) return 1;
+   if(px<e200 && e50<e200) return -1;
+   return 0;
+}
 
 // FVG (Fair Value Gap) dans le sens 'dir' sur les FVG_Lookback dernieres H1.
 // Bull FVG : low[k] > high[k+2] (gap haussier) ; Bear : high[k] < low[k+2].
@@ -355,6 +379,9 @@ void OnTick()
 //==================================================================
 void TryOpen(int dir,double sl,double tp,string tag)
 {
+   // ★ v1.4 MASTER BIAS : en tendance haussiere -> que des BUY, et inversement.
+   //    Aucun SELL tant que la tendance directrice n'a pas confirme le retournement.
+   if(UseMasterBias && MasterBias()!=dir) return;
    if(!HasFVG(dir)) return;   // ★ affinage FVG (active par defaut)
    double slDist=MathAbs(iClose(_Symbol,InpBaseTF,1)-sl);
    double lot=CalcLot(slDist);
