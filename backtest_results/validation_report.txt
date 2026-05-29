@@ -1,0 +1,80 @@
+Chargement + preparation indicateurs (sur tout l'historique)...
+  100,014 bougies  2023-07-22 13:30:00 -> 2026-05-29 13:00:00
+
+Split 70/30 a 2025-07-20 22:00:00
+  IS  : 2023-07-22 -> 2025-07-20  (70,009 barres)
+  OOS : 2025-07-20 -> 2026-05-29  (30,005 barres)
+
+====================================================================================================
+ETAPE 1 — GRID SEARCH sur IN-SAMPLE (70%)
+====================================================================================================
+Combinaisons testees : 72
+
+TOP 8 IN-SAMPLE (tri PF puis net, min 30 trades) :
+  SL1.5 RR2.5 08-12h ATRmax=None | net=    1325 ret=  13.2% n=  51 WR= 37.2% PF= 1.38 DD=  6.0% exp= 25.98
+  SL1.5 RR1.5 08-12h ATRmax=None | net=     569 ret=   5.7% n=  56 WR= 46.4% PF= 1.18 DD=  6.1% exp= 10.16
+  SL1.5 RR2.0 08-12h ATRmax=None | net=     587 ret=   5.9% n=  54 WR= 38.9% PF= 1.17 DD=  5.9% exp= 10.88
+  SL1.5 RR1.5 08-12h ATRmax=  75 | net=     409 ret=   4.1% n=  48 WR= 45.8% PF= 1.15 DD=  4.2% exp=  8.52
+  SL1.5 RR2.5 00-12h ATRmax=None | net=     725 ret=   7.2% n=  93 WR= 32.3% PF= 1.10 DD= 10.7% exp=  7.79
+  SL2.0 RR2.0 00-21h ATRmax=None | net=     739 ret=   7.4% n= 123 WR= 36.6% PF= 1.09 DD=  9.0% exp=  6.01
+  SL2.0 RR1.5 00-12h ATRmax=None | net=     499 ret=   5.0% n=  89 WR= 43.8% PF= 1.09 DD=  8.9% exp=  5.60
+  SL1.5 RR2.5 00-21h ATRmax=None | net=    1026 ret=  10.3% n= 150 WR= 32.0% PF= 1.09 DD= 10.4% exp=  6.84
+
+>> MEILLEUR IS : {'session_start': 8, 'session_end': 12, 'atr_sl_mult': 1.5, 'rr': 2.5, 'use_partial': False, 'use_be': False, 'atr_rank_max': None}
+   IS  : net=    1325 ret=  13.2% n=  51 WR= 37.2% PF= 1.38 DD=  6.0% exp= 25.98
+
+====================================================================================================
+ETAPE 2 — VERIFICATION OUT-OF-SAMPLE (30% jamais vus)
+====================================================================================================
+   IS  : net=    1325 ret=  13.2% n=  51 WR= 37.2% PF= 1.38 DD=  6.0% exp= 25.98
+   OOS : net=     102 ret=   1.0% n=   9 WR= 33.3% PF= 1.17 DD=  3.9% exp= 11.32
+
+>> VERDICT : INCONCLUSIF (trop peu de trades OOS)
+
+Controle du TOP 3 IS -> OOS :
+  SL1.5 RR2.5 08-12h ATRmax=None
+     IS : net=    1325 ret=  13.2% n=  51 WR= 37.2% PF= 1.38 DD=  6.0% exp= 25.98
+     OOS: net=     102 ret=   1.0% n=   9 WR= 33.3% PF= 1.17 DD=  3.9% exp= 11.32  INCONCLUSIF (trop peu de trades OOS)
+  SL1.5 RR1.5 08-12h ATRmax=None
+     IS : net=     569 ret=   5.7% n=  56 WR= 46.4% PF= 1.18 DD=  6.1% exp= 10.16
+     OOS: net=     289 ret=   2.9% n=   9 WR= 55.6% PF= 1.71 DD=  1.9% exp= 32.12  INCONCLUSIF (trop peu de trades OOS)
+  SL1.5 RR2.0 08-12h ATRmax=None
+     IS : net=     587 ret=   5.9% n=  54 WR= 38.9% PF= 1.17 DD=  5.9% exp= 10.88
+     OOS: net=     -39 ret=  -0.4% n=   9 WR= 33.3% PF= 0.94 DD=  3.9% exp= -4.31  INCONCLUSIF (trop peu de trades OOS)
+
+====================================================================================================
+ETAPE 3 — COMBINAISON V1a (seance 8-12h) + V2g (sans partial/BE, RR2, SL x1.5)
+====================================================================================================
+   BASELINE full : net=   -4925 ret= -49.2% n= 522 WR= 74.7% PF= 0.54 DD= 49.4% exp= -9.43
+   V1a+V2g full  : net=     568 ret=   5.7% n=  63 WR= 38.1% PF= 1.14 DD=  5.9% exp=  9.01
+   V1a+V2g IS    : net=     587 ret=   5.9% n=  54 WR= 38.9% PF= 1.17 DD=  5.9% exp= 10.88
+   V1a+V2g OOS   : net=     -39 ret=  -0.4% n=   9 WR= 33.3% PF= 0.94 DD=  3.9% exp= -4.31  INCONCLUSIF (trop peu de trades OOS)
+
+====================================================================================================
+ETAPE 4 — WALK-FORWARD (fenetres glissantes ~6 mois)
+====================================================================================================
+Config testee = meilleur IS retenu : {'session_start': 8, 'session_end': 12, 'atr_sl_mult': 1.5, 'rr': 2.5, 'use_partial': False, 'use_be': False, 'atr_rank_max': None} 
+
+Fenetre                     trades     WR     PF       net     DD
+----------------------------------------------------------------------
+2023-07-22 -> 2024-01-12        24  37.5%   1.36       588   6.0%
+2024-01-12 -> 2024-07-03         4  75.0%   6.66       616   1.0%
+2024-07-03 -> 2024-12-24        12  25.0%   0.80      -170   3.0%
+2024-12-24 -> 2025-06-16        11  36.4%   1.37       260   3.0%
+2025-06-16 -> 2025-12-06         3  33.3%   1.26        49   1.0%
+2025-12-06 -> 2026-05-29         6  33.3%   1.13        53   3.9%
+----------------------------------------------------------------------
+Fenetres profitables : 5/6  |  PF>=1.0 : 5/6
+>> ROBUSTE dans le temps
+
+Walk-forward sur V1a+V2g :
+Fenetre                     trades     WR     PF       net     DD
+----------------------------------------------------------------------
+2023-07-22 -> 2024-01-12        24  37.5%   1.08       133   5.9%
+2024-01-12 -> 2024-07-03         5  60.0%   2.70       363   2.0%
+2024-07-03 -> 2024-12-24        13  38.5%   1.20       160   3.1%
+2024-12-24 -> 2025-06-16        12  33.3%   0.95       -39   3.0%
+2025-06-16 -> 2025-12-06         3  33.3%   1.00         1   1.0%
+2025-12-06 -> 2026-05-29         6  33.3%   0.90       -39   3.9%
+----------------------------------------------------------------------
+Fenetres profitables : 4/6  |  PF>=1.0 : 4/6

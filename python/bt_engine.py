@@ -156,7 +156,10 @@ def prepare(m15, c):
                 atr_rank=atr_rank, dist200=dist200)
 
 
-def run(m15, prep, cfg):
+def run(m15, prep, cfg, start=None, end=None):
+    """start/end : bornes de dates (incluses) pour backtester une tranche.
+       Les indicateurs (prep) sont calcules sur tout l'historique en amont,
+       donc pas de lookahead aux frontieres de tranche."""
     c = dict(DEFAULT); c.update(cfg)
     bal = c["initial_balance"]
     eq_curve=[]; eq_dates=[]; trades=[]
@@ -171,7 +174,12 @@ def run(m15, prep, cfg):
     closes=m15["close"].values; spreads=m15["spread_usd"].values
     times=m15.index
 
-    for i in range(len(m15)):
+    # bornes d'index
+    i0, i1 = 0, len(m15)
+    if start is not None: i0 = int(times.searchsorted(pd.Timestamp(start), side="left"))
+    if end   is not None: i1 = int(times.searchsorted(pd.Timestamp(end),   side="right"))
+
+    for i in range(i0, i1):
         ts=times[i]; high=highs[i]; low=lows[i]; close=closes[i]
         if day_date != ts.date():
             day_date=ts.date(); day_anchor=bal; locked=False
