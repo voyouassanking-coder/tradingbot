@@ -1,0 +1,38 @@
+Chargement + preparation des indicateurs (une fois)...
+  100,014 bougies M15  2023-07-22 13:30:00 -> 2026-05-29 13:00:00
+
+============================================================================================================
+BASELINE                                   net=    -4925  ret=  -49.2%  n= 522  WR= 74.7%  PF= 0.54  DD= 49.4%  exp= -9.43
+============================================================================================================
+V1a Session 8-12h seulement                net=       57  ret=    0.6%  n= 109  WR= 80.7%  PF= 1.02  DD=  5.8%  exp=  0.52  ✓ MIEUX
+V1b Session 9-11h + 18h (best hours)       net=     -461  ret=   -4.6%  n=  66  WR= 78.8%  PF= 0.68  DD=  4.8%  exp= -6.99  ✓ MIEUX
+V1c Exclure 12-20h (garder 8-12)           net=       57  ret=    0.6%  n= 109  WR= 80.7%  PF= 1.02  DD=  5.8%  exp=  0.52  ✓ MIEUX
+V2a SL x1.5                                net=    -3603  ret=  -36.0%  n= 473  WR= 81.0%  PF= 0.53  DD= 38.2%  exp= -7.62  ~ partiel
+V2b SL x2.0                                net=    -3269  ret=  -32.7%  n= 439  WR= 84.3%  PF= 0.43  DD= 34.4%  exp= -7.45  ~ partiel
+V2c RR 2.0 (TP plus loin)                  net=    -4724  ret=  -47.2%  n= 518  WR= 74.9%  PF= 0.56  DD= 48.7%  exp= -9.12  ✓ MIEUX
+V2d RR 3.0                                 net=    -4798  ret=  -48.0%  n= 501  WR= 75.5%  PF= 0.52  DD= 48.1%  exp= -9.58  ~ partiel
+V2e Sans partial ni BE (laisser courir)    net=    -1040  ret=  -10.4%  n= 299  WR= 41.1%  PF= 0.94  DD= 17.5%  exp= -3.48  ✓ MIEUX
+V2f Partial plus loin (+400 USD)           net=    -1991  ret=  -19.9%  n= 363  WR= 59.8%  PF= 0.86  DD= 23.4%  exp= -5.49  ✓ MIEUX
+V2g Sans partial + RR2 + SL x1.5           net=      676  ret=    6.8%  n= 173  WR= 36.4%  PF= 1.06  DD= 14.5%  exp=  3.91  ✓ MIEUX
+V3a SELL only (BUY desactive)              net=    -1351  ret=  -13.5%  n= 149  WR= 75.2%  PF= 0.63  DD= 13.8%  exp= -9.07  ✓ MIEUX
+V3b Tendance forte |dist EMA200|>=1.5%     net=    -3010  ret=  -30.1%  n= 313  WR= 79.2%  PF= 0.46  DD= 30.9%  exp= -9.62  ~ partiel
+V3c Tendance forte |dist EMA200|>=2.5%     net=    -1124  ret=  -11.2%  n= 200  WR= 84.5%  PF= 0.62  DD= 14.2%  exp= -5.62  ✓ MIEUX
+V4a ATR rank 25-75 (eviter extremes)       net=    -2248  ret=  -22.5%  n= 223  WR= 72.7%  PF= 0.62  DD= 23.2%  exp=-10.08  ✓ MIEUX
+V4b ATR rank <=75 (eviter vol haute)       net=    -2433  ret=  -24.3%  n= 280  WR= 73.6%  PF= 0.66  DD= 27.4%  exp= -8.69  ✓ MIEUX
+V4c ATR rank <=50 (vol basse/moyenne)      net=    -1487  ret=  -14.9%  n= 153  WR= 73.2%  PF= 0.63  DD= 16.2%  exp= -9.72  ✓ MIEUX
+V5a Exit signal oppose (no partial/BE)     net=    -1040  ret=  -10.4%  n= 299  WR= 41.1%  PF= 0.94  DD= 17.5%  exp= -3.48  ✓ MIEUX
+============================================================================================================
+
+TOP 5 par profit net :
+  V2g Sans partial + RR2 + SL x1.5           net=      676  PF=1.06  DD=14.5%  WR=36.4%
+  V1a Session 8-12h seulement                net=       57  PF=1.02  DD=5.8%  WR=80.7%
+  V1c Exclure 12-20h (garder 8-12)           net=       57  PF=1.02  DD=5.8%  WR=80.7%
+  V1b Session 9-11h + 18h (best hours)       net=     -461  PF=0.68  DD=4.8%  WR=78.8%
+  V2e Sans partial ni BE (laisser courir)    net=    -1040  PF=0.94  DD=17.5%  WR=41.1%
+
+TOP 5 par profit factor :
+  V2g Sans partial + RR2 + SL x1.5           PF= 1.06  net=      676  DD=14.5%
+  V1a Session 8-12h seulement                PF= 1.02  net=       57  DD=5.8%
+  V1c Exclure 12-20h (garder 8-12)           PF= 1.02  net=       57  DD=5.8%
+  V2e Sans partial ni BE (laisser courir)    PF= 0.94  net=    -1040  DD=17.5%
+  V5a Exit signal oppose (no partial/BE)     PF= 0.94  net=    -1040  DD=17.5%
