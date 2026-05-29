@@ -41,6 +41,9 @@ DEFAULT=dict(
     ote_lo=0.62, ote_hi=0.79, swing_lb=30, fvg_lb=20, ipda_days=20,
     # --- suggestions expert ---
     use_master_bias=False,                     # n'autoriser que le sens de la tendance D1
+    use_sma_trend=False,                        # SMA50/200 pour la tendance (au lieu d'EMA)
+    trail_mult=None,                            # placeholder
+
     use_adx=False, adx_min=25.0, adx_p=14,     # force de tendance
     use_volume=False, vol_mult=1.0,            # confirmation volume (>moyenne)
     trail_kijun=False,                         # trailing sur Kijun au lieu d'ATR (placeholder)
@@ -63,6 +66,7 @@ def prep(m15, base_rule="1h"):
     h1["ssa"]=((h1["tenkan"]+h1["kijun"])/2).shift(26)
     h1["ssb"]=kijun(h1["high"],h1["low"],52).shift(26)
     h1["ema50"]=ema(h1["close"],50); h1["ema200"]=ema(h1["close"],200)
+    h1["sma50t"]=sma(h1["close"],50); h1["sma200t"]=sma(h1["close"],200)  # trend SMA option
     # stack 6 MA + Kijun sur H1
     h1["e5"]=ema(h1["close"],5); h1["e8"]=ema(h1["close"],8); h1["e21"]=ema(h1["close"],21)
     h1["s55"]=sma(h1["close"],55); h1["s100"]=sma(h1["close"],100); h1["s200"]=sma(h1["close"],200)
@@ -121,7 +125,9 @@ def run(h1,h4,d1,cfg,start=None,end=None,full=False):
     H=h1.to_dict("records")  # plus rapide
     for i in range(max(i0,210),i1):
         r=h1.iloc[i]; r1=h1.iloc[i-1]
-        c1=r1["close"]; o1=r1["open"]; ema50=r1["ema50"]; ema200=r1["ema200"]
+        c1=r1["close"]; o1=r1["open"]
+        if c["use_sma_trend"]: ema50=r1["sma50t"]; ema200=r1["sma200t"]
+        else: ema50=r1["ema50"]; ema200=r1["ema200"]
         ks=r1["kijun"]; ts=r1["tenkan"]; ssa=r1["ssa"]; ssb=r1["ssb"]; av=r1["atr"]
         if np.isnan(ema200) or np.isnan(ssa) or np.isnan(av):
             eq.append(bal); eqt.append(idx[i]); continue

@@ -21,7 +21,7 @@
 //|   ⚠ AUCUN systeme ne gagne CHAQUE semaine.                        |
 //+==================================================================+
 #property copyright "FusionBTC"
-#property version   "1.40"
+#property version   "1.50"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -54,6 +54,7 @@ input group "=== ICHIMOKU / EMA ==="
 input int    Ich_Tenkan     = 9;
 input int    Ich_Kijun      = 26;
 input int    Ich_Senkou     = 52;
+input bool   UseSmaTrend    = true;     // ★ v1.5 : SMA pour la tendance (demande user) ; false=EMA
 input int    EMA_Fast       = 50;
 input int    EMA_Slow       = 200;
 
@@ -77,7 +78,7 @@ input int    St_SMA200      = 200;
 //=== ATR / SL / TP (valeurs optimisees) ==========================
 input group "=== ATR / SL / TP ==="
 input int    ATR_Period     = 14;
-input double ATR_SL_Mult    = 1.8;      // ★ optimise
+input double ATR_SL_Mult    = 2.5;      // ★ v1.5 : 2.5xATR (WR 69%, moins de SL) - etait 1.8
 input double ATR_TP_Mult    = 1.5;      // ★ v1.3 : 1.5xATR (WR 60%, PF 1.50, OOS 1.81) - etait 3.0
 input double ATR_MinThreshold = 0.8;
 input int    MinConfirmations = 3;      // ★ optimise
@@ -94,10 +95,10 @@ input int    MaxDailyTrades   = 6;
 //=== PROTECTION POSITION =========================================
 input group "=== GESTION POSITION ==="
 input bool   UseBreakEven    = true;
-input double BE_TriggerATR    = 1.2;
+input double BE_TriggerATR    = 2.0;    // ★ v1.5 : BE seulement en gain solide
 input double BE_LockUSD       = 15.0;
 input bool   UseTrailingStop  = true;
-input double Trail_ATR_Mult   = 1.0;
+input double Trail_ATR_Mult   = 2.0;    // ★ v1.5 : trail plus large (evite SL prematures)
 
 //=== FILTRES =====================================================
 input group "=== FILTRES ==="
@@ -134,8 +135,9 @@ ENUM_ORDER_TYPE_FILLING GetFilling()
 int OnInit()
 {
    hIchi=iIchimoku(_Symbol,InpBaseTF,Ich_Tenkan,Ich_Kijun,Ich_Senkou);
-   hEMAf=iMA(_Symbol,InpBaseTF,EMA_Fast,0,MODE_EMA,PRICE_CLOSE);
-   hEMAs=iMA(_Symbol,InpBaseTF,EMA_Slow,0,MODE_EMA,PRICE_CLOSE);
+   ENUM_MA_METHOD trMode = UseSmaTrend ? MODE_SMA : MODE_EMA;
+   hEMAf=iMA(_Symbol,InpBaseTF,EMA_Fast,0,trMode,PRICE_CLOSE);
+   hEMAs=iMA(_Symbol,InpBaseTF,EMA_Slow,0,trMode,PRICE_CLOSE);
    hATR_H1=iATR(_Symbol,InpBaseTF,ATR_Period);
    hATR_H4=iATR(_Symbol,PERIOD_H4,ATR_Period);
    hADX=iADX(_Symbol,InpBaseTF,14);
@@ -145,8 +147,8 @@ int OnInit()
    hS55=iMA(_Symbol,InpBaseTF,St_SMA55,0,MODE_SMA,PRICE_CLOSE);
    hS100=iMA(_Symbol,InpBaseTF,St_SMA100,0,MODE_SMA,PRICE_CLOSE);
    hS200=iMA(_Symbol,InpBaseTF,St_SMA200,0,MODE_SMA,PRICE_CLOSE);
-   hMB50 =iMA(_Symbol,MasterBiasTF,MB_EMA_Fast,0,MODE_EMA,PRICE_CLOSE);
-   hMB200=iMA(_Symbol,MasterBiasTF,MB_EMA_Slow,0,MODE_EMA,PRICE_CLOSE);
+   hMB50 =iMA(_Symbol,MasterBiasTF,MB_EMA_Fast,0,trMode,PRICE_CLOSE);
+   hMB200=iMA(_Symbol,MasterBiasTF,MB_EMA_Slow,0,trMode,PRICE_CLOSE);
 
    if(hIchi==INVALID_HANDLE||hEMAf==INVALID_HANDLE||hEMAs==INVALID_HANDLE||
       hATR_H1==INVALID_HANDLE||hATR_H4==INVALID_HANDLE||hE5==INVALID_HANDLE||
