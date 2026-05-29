@@ -83,9 +83,10 @@ h2("1.2 Résultats de backtest (34 mois, compte de référence)")
 para("Chiffres issus de la simulation Python sur données historiques. Ils doivent "
      "être confirmés par le Strategy Tester MT5 en mode « every tick based on real ticks ». "
      "Le backtest reste une indication, pas une garantie de performance future.")
-table(["Timeframe","Profit Factor","Drawdown max","Gain","Trades","Semaines gagnantes","OOS"],
-      [["M30 (défaut)","1.39","9.7 %","+42 %","199","56.9 %","PF 1.84 (69 trades)"],
-       ["H1 (alternative)","1.86","6.9 %","+36 %","92","51.5 %","PF 2.55 (27 trades)"]])
+table(["Configuration","Profit Factor","Drawdown max","Gain","Trades","Semaines gagnantes","Walk-forward"],
+      [["M30 + ADX>20 (défaut)","1.57","6.6 %","+50 %","157","56.7 %","6/6 fenêtres +"],
+       ["M30 sans ADX","1.39","9.7 %","+42 %","199","56.9 %","5/6 fenêtres +"],
+       ["H1 (alternative bas DD)","1.86","6.9 %","+36 %","92","51.5 %","5/6 fenêtres +"]])
 para("Les deux configurations sont robustes : 5 fenêtres walk-forward sur 6 sont "
      "profitables, et la performance se maintient sur la partie des données jamais "
      "utilisée pour l'optimisation (out-of-sample).", italic=True)
@@ -122,6 +123,13 @@ para("Le robot exige la présence récente d'un « gap d'inefficience » (désé
      "seul affinage de type Smart Money qui a amélioré le système de façon robuste "
      "lors des tests (les concepts OTE, IPDA et engulfing, eux, étranglaient le nombre "
      "de trades sans gain net — ils ont donc été écartés).")
+para("Filtre n°3 — ADX (force de tendance) :", bold=True)
+para("L'ADX mesure la PUISSANCE de la tendance (pas sa direction). Le robot n'entre "
+     "que si l'ADX dépasse 20 : il évite ainsi les marchés qui hésitent (range), où un "
+     "suivi de tendance perd de l'argent. Ce filtre a été ajouté après validation : il "
+     "fait passer le profit factor de 1.39 à 1.57 et réduit le drawdown de 9.7 % à 6.6 %, "
+     "avec 6 fenêtres walk-forward profitables sur 6. (Le filtre de volume, lui, a été "
+     "testé puis écarté car il n'apportait rien sur Bitcoin.)")
 para("Score de confirmations :", bold=True)
 para("Chaque condition (tendance, position vs Kumo, position vs Kijun, cassure, "
      "volatilité suffisante) rapporte un point. Il faut au moins 3 points "
@@ -150,6 +158,8 @@ table(["Paramètre","Défaut","Rôle"],
  [["RequireMAStack","true","Exige l'alignement des 6 MA + Kijun (NE PAS désactiver)"],
   ["UseFVGFilter","true","Exige un Fair Value Gap récent dans le sens du trade"],
   ["FVG_Lookback","20","Nombre de bougies où chercher un FVG"],
+  ["UseADXFilter","true","Exige une tendance forte (ADX) — boost validé"],
+  ["ADX_MinValue","20.0","Seuil ADX (20 optimal ; au-delà de 25 la régularité baisse)"],
   ["MinConfirmations","3","Score minimum de confirmations pour entrer"]])
 
 h2("3.3 Stop Loss / Take Profit")

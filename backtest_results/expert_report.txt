@@ -13,3 +13,10 @@ REF fusion M30 (stack+FVG)      net=  1270.9 n= 199 WR= 41.2% PF= 1.39 DD=  9.7%
 ========================================================================================================
 VALIDATION IS/OOS + WALK-FORWARD des candidats prometteurs
 ========================================================================================================
+
+ADX>25
+   FULL: net=  1041.4 n= 130 WR= 41.5% PF= 1.49 DD=  9.3% sem+= 50.0% medWk=   1.3
+   IS  : net=   254.8 n=  79 WR= 36.7% PF= 1.19 DD=  9.3% sem+= 45.3% medWk= -17.2
+   OOS : net=   773.4 n=  51 WR= 49.0% PF= 2.11 DD=  3.2% sem+= 55.2% medWk=  24.2
+   walk-forward : 5/6 fenetres +
+   >> ROBUSTE
