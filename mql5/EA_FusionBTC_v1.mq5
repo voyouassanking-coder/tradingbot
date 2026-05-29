@@ -269,7 +269,7 @@ void OnTick()
 
    if(!FiltersPass()) return;
 
-   double atr=GetATR(hATR_H1), atrH4=GetATR(hATR_H4);
+   double atr=GetATR(hATR_H1);
    double ema50=Buf(hEMAf,0,1), ema200=Buf(hEMAs,0,1);
    double kijun=Buf(hIchi,ICH_KIJUN,1), tenkan=Buf(hIchi,ICH_TENKAN,1);
    double spanA=Buf(hIchi,ICH_SPANA,1), spanB=Buf(hIchi,ICH_SPANB,1);
