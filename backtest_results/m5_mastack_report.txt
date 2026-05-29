@@ -1,0 +1,70 @@
+Chargement M5 + indicateurs...
+  100,177 bougies M5  2025-06-15 -> 2026-05-29  | split OOS @ 2026-02-14
+
+================================================================================================================
+MATRICE DE VARIANTES (lot 0.01, USD)
+================================================================================================================
+A. Entry=always, exit=stack_break, Kijun ON   net=  -684.9 n=2485 WR= 25.4% PF= 0.78 DD=  727.4 exp=-0.276 medbars=  6
+B. Entry=fresh,  exit=sltp (RR2 SL1.5)        net=  -413.5 n=1768 WR= 32.6% PF= 0.87 DD=  446.2 exp=-0.234 medbars=  7
+C. Entry=fresh,  exit=stack_break             net=  -621.8 n=2111 WR= 24.7% PF= 0.76 DD=  668.7 exp=-0.295 medbars=  6
+D. Entry=pullback, exit=sltp (RR2 SL1.5)      net=  -614.0 n=2230 WR= 32.0% PF= 0.85 DD=  642.3 exp=-0.275 medbars=  6
+E. Entry=pullback, exit=stack_break           net=  -640.0 n=2402 WR= 25.4% PF= 0.78 DD=  680.7 exp=-0.266 medbars=  6
+F. Entry=pullback, exit=sltp_or_break         net=  -947.5 n=2975 WR= 27.2% PF= 0.76 DD=  969.1 exp=-0.318 medbars=  4
+G. D + RR3.0                                  net=  -474.5 n=1813 WR= 23.7% PF= 0.88 DD=  519.4 exp=-0.262 medbars=  8
+H. D + RR1.5 SL1.0 (scalp serre)              net=  -769.0 n=3594 WR= 38.7% PF= 0.81 DD=  793.2 exp=-0.214 medbars=  2
+I. D sans Kijun                               net=  -744.9 n=2282 WR= 31.6% PF= 0.83 DD=  774.1 exp=-0.326 medbars=  7
+J. D + session 8-21                           net=  -357.6 n=1418 WR= 32.1% PF= 0.87 DD=  382.6 exp=-0.252 medbars=  6
+K. D + time_stop 12 bougies                   net=  -618.1 n=2811 WR= 38.5% PF= 0.85 DD=  668.5 exp=-0.220 medbars=  6
+L. fresh + sltp_or_break + RR2.5              net=  -763.1 n=2200 WR= 24.6% PF= 0.73 DD=  803.7 exp=-0.347 medbars=  4
+
+TOP 5 par PF (min 40 trades):
+  G. D + RR3.0                                  net=  -474.5 n=1813 WR= 23.7% PF= 0.88 DD=  519.4 exp=-0.262 medbars=  8
+  J. D + session 8-21                           net=  -357.6 n=1418 WR= 32.1% PF= 0.87 DD=  382.6 exp=-0.252 medbars=  6
+  B. Entry=fresh,  exit=sltp (RR2 SL1.5)        net=  -413.5 n=1768 WR= 32.6% PF= 0.87 DD=  446.2 exp=-0.234 medbars=  7
+  D. Entry=pullback, exit=sltp (RR2 SL1.5)      net=  -614.0 n=2230 WR= 32.0% PF= 0.85 DD=  642.3 exp=-0.275 medbars=  6
+  K. D + time_stop 12 bougies                   net=  -618.1 n=2811 WR= 38.5% PF= 0.85 DD=  668.5 exp=-0.220 medbars=  6
+
+TOP 5 par net (min 40 trades):
+  J. D + session 8-21                           net=  -357.6 n=1418 WR= 32.1% PF= 0.87 DD=  382.6 exp=-0.252 medbars=  6
+  B. Entry=fresh,  exit=sltp (RR2 SL1.5)        net=  -413.5 n=1768 WR= 32.6% PF= 0.87 DD=  446.2 exp=-0.234 medbars=  7
+  G. D + RR3.0                                  net=  -474.5 n=1813 WR= 23.7% PF= 0.88 DD=  519.4 exp=-0.262 medbars=  8
+  D. Entry=pullback, exit=sltp (RR2 SL1.5)      net=  -614.0 n=2230 WR= 32.0% PF= 0.85 DD=  642.3 exp=-0.275 medbars=  6
+  K. D + time_stop 12 bougies                   net=  -618.1 n=2811 WR= 38.5% PF= 0.85 DD=  668.5 exp=-0.220 medbars=  6
+
+================================================================================================================
+VALIDATION IS/OOS (top 3 par PF, min 40 trades)
+================================================================================================================
+
+G. D + RR3.0
+   FULL: net=  -474.5 n=1813 WR= 23.7% PF= 0.88 DD=  519.4 exp=-0.262 medbars=  8
+   IS  : net=  -310.5 n=1269 WR= 23.6% PF= 0.89 DD=  438.8 exp=-0.245 medbars=  8
+   OOS : net=  -173.7 n= 544 WR= 23.9% PF= 0.82 DD=  186.8 exp=-0.319 medbars=  9
+   >> SURAJUSTEMENT -> ECARTER
+
+J. D + session 8-21
+   FULL: net=  -357.6 n=1418 WR= 32.1% PF= 0.87 DD=  382.6 exp=-0.252 medbars=  6
+   IS  : net=  -267.1 n= 990 WR= 31.8% PF= 0.87 DD=  357.3 exp=-0.270 medbars=  6
+   OOS : net=  -100.4 n= 427 WR= 32.5% PF= 0.85 DD=  119.4 exp=-0.235 medbars=  7
+   >> SURAJUSTEMENT -> ECARTER
+
+B. Entry=fresh,  exit=sltp (RR2 SL1.5)
+   FULL: net=  -413.5 n=1768 WR= 32.6% PF= 0.87 DD=  446.2 exp=-0.234 medbars=  7
+   IS  : net=  -306.5 n=1237 WR= 32.5% PF= 0.87 DD=  388.1 exp=-0.248 medbars=  7
+   OOS : net=  -107.0 n= 531 WR= 33.0% PF= 0.86 DD=  118.5 exp=-0.201 medbars=  7
+   >> SURAJUSTEMENT -> ECARTER
+
+================================================================================================================
+WALK-FORWARD 6 fenetres — meilleure config par PF
+================================================================================================================
+Config : G. D + RR3.0
+
+Fenetre                       n     WR     PF      net      DD
+--------------------------------------------------------------
+2025-06-15->2025-08-12      335  20.3%   0.66   -246.2   287.5
+2025-08-12->2025-10-09      298  22.8%   0.78   -133.1   178.0
+2025-10-09->2025-12-06      303  27.4%   1.21    161.0    82.1
+2025-12-06->2026-02-02      274  23.4%   0.76   -133.8   145.6
+2026-02-02->2026-04-01      314  25.2%   0.94    -40.6   125.2
+2026-04-01->2026-05-29      289  23.5%   0.82    -81.9    92.9
+--------------------------------------------------------------
+Profitables : 1/6   PF>=1 : 1/6
