@@ -111,7 +111,7 @@ bool   globalHalt=false;
 //==================================================================
 ENUM_ORDER_TYPE_FILLING GetFilling()
 {
-   uint f=(uint)SymbolInfoInteger(_Symbol,SYMBOL_FILLING_FLAGS);
+   uint f=(uint)SymbolInfoInteger(_Symbol,SYMBOL_FILLING_MODE);
    if((f&SYMBOL_FILLING_FOK)!=0) return ORDER_FILLING_FOK;
    if((f&SYMBOL_FILLING_IOC)!=0) return ORDER_FILLING_IOC;
    return ORDER_FILLING_RETURN;
