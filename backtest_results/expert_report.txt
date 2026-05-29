@@ -27,3 +27,17 @@ ADX>20
    OOS : net=   676.7 n=  57 WR= 47.4% PF= 1.89 DD=  4.4% sem+= 60.0% medWk=  11.0
    walk-forward : 6/6 fenetres +
    >> ROBUSTE
+
+Volume x1.0
+   FULL: net=   784.2 n= 183 WR= 38.8% PF= 1.28 DD= 10.5% sem+= 49.0% medWk=  -5.0
+   IS  : net=    77.5 n= 122 WR= 35.2% PF= 1.04 DD= 10.5% sem+= 47.1% medWk= -13.2
+   OOS : net=   650.3 n=  61 WR= 45.9% PF= 1.80 DD=  4.3% sem+= 56.2% medWk=  13.6
+   walk-forward : 4/6 fenetres +
+   >> ROBUSTE
+
+ADX>25 + Volume x1.0
+   FULL: net=   583.2 n= 115 WR= 39.1% PF= 1.33 DD= 12.5% sem+= 44.9% medWk= -16.1
+   IS  : net=   -32.5 n=  70 WR= 32.9% PF= 0.97 DD= 11.5% sem+= 41.2% medWk= -17.7
+   OOS : net=   686.3 n=  45 WR= 48.9% PF= 2.18 DD=  2.7% sem+= 51.9% medWk=  19.7
+   walk-forward : 5/6 fenetres +
+   >> ROBUSTE
