@@ -40,8 +40,9 @@ def rs(d,rule):
     return d.resample(rule,label="right",closed="right").agg(
         {"open":"first","high":"max","low":"min","close":"last","tick_volume":"sum"}).dropna()
 
-def prep(m15):
-    h1=rs(m15,"1h"); h4=rs(m15,"4h"); d1=rs(m15,"1D")
+def prep(m15, base_rule="1h"):
+    # base_rule = TF d'execution du moteur (def H1). d1 reste journalier.
+    h1=rs(m15,base_rule); h4=rs(m15,"4h"); d1=rs(m15,"1D")
     for df in (h1,h4):
         df["atr"]=atr(df["high"],df["low"],df["close"],14)
     h1["tenkan"]=tenkan(h1["high"],h1["low"],9)

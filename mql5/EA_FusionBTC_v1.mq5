@@ -8,15 +8,18 @@
 //|     • Garde-fous risque : blocage si risque min-lot > %equity,    |
 //|       kill-switch DD global                                       |
 //|                                                                   |
-//|   Backtest 34 mois BTC M15->H1 (compte 3000) :                    |
-//|     PF 1.78 | DD 7.4% | +35% | OOS PF 2.64 | 5/6 fenetres WF +    |
-//|     Semaines gagnantes ~50% (60% en OOS recent)                   |
+//|   TF d'execution optimal (backtest 34 mois, compte 3000) :        |
+//|     M30 : PF 1.39 | DD 9.7% | +42% | 199 trades | sem.+ 56.9%     |
+//|           OOS PF 1.84 (69 trades) | 5/6 WF -> DEFAUT (objectif    |
+//|           gains+regularite hebdo)                                 |
+//|     H1  : PF 1.86 | DD 6.9% | +36% | 92 trades | sem.+ 51.5%      |
+//|           -> alternative si on privilegie le plus faible DD        |
 //|                                                                   |
 //|   ⚠ AUCUN systeme ne gagne CHAQUE semaine. Objectif realiste :    |
-//|     esperance positive + ~50-60% de semaines vertes.              |
+//|     esperance positive + ~55-60% de semaines vertes.              |
 //+==================================================================+
 #property copyright "FusionBTC"
-#property version   "1.00"
+#property version   "1.10"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -36,6 +39,9 @@ input bool   RunStrategyB   = true;     // Cassure H1 + cross Tenkan/Kijun
 input bool   RunStrategyC   = true;     // Pullback Kijun en tendance D1
 
 //=== ICHIMOKU / EMA ==============================================
+input group "=== TIMEFRAME D'EXECUTION ==="
+input ENUM_TIMEFRAMES InpBaseTF = PERIOD_M30; // ★ M30 optimal (gains+regularite) ; H1 = DD plus bas
+
 input group "=== ICHIMOKU / EMA ==="
 input int    Ich_Tenkan     = 9;
 input int    Ich_Kijun      = 26;
@@ -113,17 +119,17 @@ ENUM_ORDER_TYPE_FILLING GetFilling()
 
 int OnInit()
 {
-   hIchi=iIchimoku(_Symbol,PERIOD_H1,Ich_Tenkan,Ich_Kijun,Ich_Senkou);
-   hEMAf=iMA(_Symbol,PERIOD_H1,EMA_Fast,0,MODE_EMA,PRICE_CLOSE);
-   hEMAs=iMA(_Symbol,PERIOD_H1,EMA_Slow,0,MODE_EMA,PRICE_CLOSE);
-   hATR_H1=iATR(_Symbol,PERIOD_H1,ATR_Period);
+   hIchi=iIchimoku(_Symbol,InpBaseTF,Ich_Tenkan,Ich_Kijun,Ich_Senkou);
+   hEMAf=iMA(_Symbol,InpBaseTF,EMA_Fast,0,MODE_EMA,PRICE_CLOSE);
+   hEMAs=iMA(_Symbol,InpBaseTF,EMA_Slow,0,MODE_EMA,PRICE_CLOSE);
+   hATR_H1=iATR(_Symbol,InpBaseTF,ATR_Period);
    hATR_H4=iATR(_Symbol,PERIOD_H4,ATR_Period);
-   hE5 =iMA(_Symbol,PERIOD_H1,St_EMA5, 0,MODE_EMA,PRICE_CLOSE);
-   hE8 =iMA(_Symbol,PERIOD_H1,St_EMA8, 0,MODE_EMA,PRICE_CLOSE);
-   hE21=iMA(_Symbol,PERIOD_H1,St_EMA21,0,MODE_EMA,PRICE_CLOSE);
-   hS55=iMA(_Symbol,PERIOD_H1,St_SMA55,0,MODE_SMA,PRICE_CLOSE);
-   hS100=iMA(_Symbol,PERIOD_H1,St_SMA100,0,MODE_SMA,PRICE_CLOSE);
-   hS200=iMA(_Symbol,PERIOD_H1,St_SMA200,0,MODE_SMA,PRICE_CLOSE);
+   hE5 =iMA(_Symbol,InpBaseTF,St_EMA5, 0,MODE_EMA,PRICE_CLOSE);
+   hE8 =iMA(_Symbol,InpBaseTF,St_EMA8, 0,MODE_EMA,PRICE_CLOSE);
+   hE21=iMA(_Symbol,InpBaseTF,St_EMA21,0,MODE_EMA,PRICE_CLOSE);
+   hS55=iMA(_Symbol,InpBaseTF,St_SMA55,0,MODE_SMA,PRICE_CLOSE);
+   hS100=iMA(_Symbol,InpBaseTF,St_SMA100,0,MODE_SMA,PRICE_CLOSE);
+   hS200=iMA(_Symbol,InpBaseTF,St_SMA200,0,MODE_SMA,PRICE_CLOSE);
 
    if(hIchi==INVALID_HANDLE||hEMAf==INVALID_HANDLE||hEMAs==INVALID_HANDLE||
       hATR_H1==INVALID_HANDLE||hATR_H4==INVALID_HANDLE||hE5==INVALID_HANDLE||
@@ -163,7 +169,7 @@ int StackDir()
    double e5=Buf(hE5,0,1),e8=Buf(hE8,0,1),e21=Buf(hE21,0,1);
    double s55=Buf(hS55,0,1),s100=Buf(hS100,0,1),s200=Buf(hS200,0,1);
    double kj=Buf(hIchi,ICH_KIJUN,1);
-   double px=iClose(_Symbol,PERIOD_H1,1);
+   double px=iClose(_Symbol,InpBaseTF,1);
    if(e5==0||s200==0||kj==0) return 0;
    if(e5>e8 && e8>e21 && e21>s55 && s55>s100 && s100>s200 && px>kj && kj>s200) return 1;
    if(e5<e8 && e8<e21 && e21<s55 && s55<s100 && s100<s200 && px<kj && kj<s200) return -1;
@@ -179,8 +185,8 @@ bool HasFVG(int dir)
    if(!UseFVGFilter) return true;
    for(int k=1;k<=FVG_Lookback;k++)
    {
-      double lo_k =iLow(_Symbol,PERIOD_H1,k),   hi_k =iHigh(_Symbol,PERIOD_H1,k);
-      double hi_k2=iHigh(_Symbol,PERIOD_H1,k+2), lo_k2=iLow(_Symbol,PERIOD_H1,k+2);
+      double lo_k =iLow(_Symbol,InpBaseTF,k),   hi_k =iHigh(_Symbol,InpBaseTF,k);
+      double hi_k2=iHigh(_Symbol,InpBaseTF,k+2), lo_k2=iLow(_Symbol,InpBaseTF,k+2);
       if(dir>0 && lo_k>hi_k2) return true;
       if(dir<0 && hi_k<lo_k2) return true;
    }
@@ -252,7 +258,7 @@ void OnTick()
       globalHalt=true; return;
    }
 
-   datetime bt=iTime(_Symbol,PERIOD_H1,0);
+   datetime bt=iTime(_Symbol,InpBaseTF,0);
    if(bt==lastBar) return;
    lastBar=bt;
 
@@ -267,7 +273,7 @@ void OnTick()
    double ema50=Buf(hEMAf,0,1), ema200=Buf(hEMAs,0,1);
    double kijun=Buf(hIchi,ICH_KIJUN,1), tenkan=Buf(hIchi,ICH_TENKAN,1);
    double spanA=Buf(hIchi,ICH_SPANA,1), spanB=Buf(hIchi,ICH_SPANB,1);
-   double c1=iClose(_Symbol,PERIOD_H1,1), o1=iOpen(_Symbol,PERIOD_H1,1);
+   double c1=iClose(_Symbol,InpBaseTF,1), o1=iOpen(_Symbol,InpBaseTF,1);
    if(atr<=0||ema200<=0||kijun<=0||atr<ATR_MinThreshold) return;
 
    bool bull=ema50>ema200, bear=ema50<ema200;
@@ -281,7 +287,7 @@ void OnTick()
    // ===== STRATEGIE B =====
    if(RunStrategyB)
    {
-      double hh=Highest(PERIOD_H1,20,2), ll=Lowest(PERIOD_H1,20,2);
+      double hh=Highest(InpBaseTF,20,2), ll=Lowest(InpBaseTF,20,2);
       double t2=Buf(hIchi,ICH_TENKAN,2), k2=Buf(hIchi,ICH_KIJUN,2);
       bool cBull=(tenkan>kijun)&&(t2<k2), cBear=(tenkan<kijun)&&(t2>k2);
       if(bull && !inKumo && cBull && hh>0 && c1>hh &&
@@ -303,8 +309,8 @@ void OnTick()
       if(ema200d1>0)
       {
          bool tBull=(closeD1>ema200d1)&&bull, tBear=(closeD1<ema200d1)&&bear;
-         bool pbBull=(iLow(_Symbol,PERIOD_H1,1)<=kijun*1.002)&&(c1>kijun)&&(c1>o1);
-         bool pbBear=(iHigh(_Symbol,PERIOD_H1,1)>=kijun*0.998)&&(c1<kijun)&&(c1<o1);
+         bool pbBull=(iLow(_Symbol,InpBaseTF,1)<=kijun*1.002)&&(c1>kijun)&&(c1>o1);
+         bool pbBear=(iHigh(_Symbol,InpBaseTF,1)>=kijun*0.998)&&(c1<kijun)&&(c1<o1);
          if(tBull && pbBull && aboveK &&
             Score(bull,aboveK,aboveKj,true,atr)>=MinConfirmations && (stack==1||stack==99))
          { double sl=c1-ATR_SL_Mult*1.6*atr, tp=c1+ATR_TP_Mult*1.6*atr; TryOpen(1,sl,tp,"_C_L"); return; }
@@ -319,7 +325,7 @@ void OnTick()
 void TryOpen(int dir,double sl,double tp,string tag)
 {
    if(!HasFVG(dir)) return;   // ★ affinage FVG (active par defaut)
-   double slDist=MathAbs(iClose(_Symbol,PERIOD_H1,1)-sl);
+   double slDist=MathAbs(iClose(_Symbol,InpBaseTF,1)-sl);
    double lot=CalcLot(slDist);
    if(lot<=0) return;
    if(!RiskAllowed(slDist,lot)) { Print("Skip ",tag," : risque min-lot > ",MaxRiskPctBlock,"%"); return; }
