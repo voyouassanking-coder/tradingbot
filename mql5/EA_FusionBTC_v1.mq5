@@ -8,17 +8,20 @@
 //|     • Garde-fous risque : blocage si risque min-lot > %equity,    |
 //|       kill-switch DD global                                       |
 //|                                                                   |
-//|   TF d'execution optimal (backtest 34 mois, compte 3000) :        |
-//|     M30 + ADX>20 (DEFAUT) : PF 1.57 | DD 6.6% | +50% | 157 trades |
-//|           sem.+ 56.7% | OOS PF 1.89 | 6/6 walk-forward            |
-//|     M30 sans ADX : PF 1.39 | DD 9.7% | sem.+ 56.9%                |
-//|     H1  : PF 1.86 | DD 6.9% (alternative, plus faible DD)         |
+//|   v1.20 — CORRECTION FREQUENCE :                                  |
+//|     Le Strategy Tester MT5 a revele que la v1.1 ne prenait qu'1   |
+//|     trade en 7 ans (filtres empiles trop stricts en reel).        |
+//|     v1.2 assouplit l'entree :                                     |
+//|       - StackStrict=false : alignement souple des MA (defaut)     |
+//|       - RequireTKCross=false : etat Tenkan>Kijun (pas le cross)   |
+//|       - RequireBreakout=false / UseFVGFilter=false par defaut     |
+//|     -> beaucoup plus de trades. A RE-VALIDER dans le Strategy     |
+//|        Tester (les chiffres Python n'etaient pas fiables ici).    |
 //|                                                                   |
-//|   ⚠ AUCUN systeme ne gagne CHAQUE semaine. Objectif realiste :    |
-//|     esperance positive + ~55-60% de semaines vertes.              |
+//|   ⚠ AUCUN systeme ne gagne CHAQUE semaine.                        |
 //+==================================================================+
 #property copyright "FusionBTC"
-#property version   "1.10"
+#property version   "1.20"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -51,7 +54,10 @@ input int    EMA_Slow       = 200;
 //=== STACK 6 MA + KIJUN (filtre fusion) ==========================
 input group "=== FILTRE STACK 6 MA + KIJUN ==="
 input bool   RequireMAStack = true;     // ★ coeur de la fusion
-input bool   UseFVGFilter   = true;     // ★ FVG : seul affinage SMC valide (PF 1.78->1.86)
+input bool   StackStrict    = false;    // ★ v1.2 : true=6 MA ordonnees (tres rare) / false=souple (recommande)
+input bool   RequireTKCross = false;    // ★ v1.2 : true=croisement Tenkan/Kijun exact / false=etat T>K (plus de trades)
+input bool   RequireBreakout= false;    // ★ v1.2 : true=cassure 20 bougies obligatoire (strat B)
+input bool   UseFVGFilter   = false;    // ★ v1.2 : FVG desactive par defaut (etait trop restrictif combine)
 input int    FVG_Lookback   = 20;       // bougies ou chercher un FVG dans le sens
 input bool   UseADXFilter   = true;     // ★ ADX force de tendance (PF 1.39->1.57, DD 9.7->6.6, 6/6 WF)
 input double ADX_MinValue   = 20.0;     // seuil ADX (20 optimal ; >25 reduit la regularite)
@@ -166,6 +172,9 @@ void OnDeinit(const int r)
 double Buf(int h,int idx,int shift){ double b[]; if(CopyBuffer(h,idx,shift,1,b)<1) return 0; return b[0]; }
 
 // Direction du stack 6 MA + Kijun sur barre fermee (shift=1)
+// StackStrict=true  : les 6 MA strictement ordonnees (signal rare, tres pur)
+// StackStrict=false : alignement souple = prix au-dessus/dessous des MA cles
+//                     + tendance EMA21 vs SMA200 + position vs Kijun (bcp plus frequent)
 int StackDir()
 {
    double e5=Buf(hE5,0,1),e8=Buf(hE8,0,1),e21=Buf(hE21,0,1);
@@ -173,8 +182,16 @@ int StackDir()
    double kj=Buf(hIchi,ICH_KIJUN,1);
    double px=iClose(_Symbol,InpBaseTF,1);
    if(e5==0||s200==0||kj==0) return 0;
-   if(e5>e8 && e8>e21 && e21>s55 && s55>s100 && s100>s200 && px>kj && kj>s200) return 1;
-   if(e5<e8 && e8<e21 && e21<s55 && s55<s100 && s100<s200 && px<kj && kj<s200) return -1;
+
+   if(StackStrict)
+   {
+      if(e5>e8 && e8>e21 && e21>s55 && s55>s100 && s100>s200 && px>kj && kj>s200) return 1;
+      if(e5<e8 && e8<e21 && e21<s55 && s55<s100 && s100<s200 && px<kj && kj<s200) return -1;
+      return 0;
+   }
+   // Mode souple
+   if(px>e21 && px>s55 && px>s100 && px>s200 && e21>s200 && px>kj) return 1;
+   if(px<e21 && px<s55 && px<s100 && px<s200 && e21<s200 && px<kj) return -1;
    return 0;
 }
 
@@ -298,11 +315,16 @@ void OnTick()
    {
       double hh=Highest(InpBaseTF,20,2), ll=Lowest(InpBaseTF,20,2);
       double t2=Buf(hIchi,ICH_TENKAN,2), k2=Buf(hIchi,ICH_KIJUN,2);
-      bool cBull=(tenkan>kijun)&&(t2<k2), cBear=(tenkan<kijun)&&(t2>k2);
-      if(bull && !inKumo && cBull && hh>0 && c1>hh &&
+      // Croisement exact OU simple etat Tenkan/Kijun selon RequireTKCross
+      bool tkBull = RequireTKCross ? ((tenkan>kijun)&&(t2<k2)) : (tenkan>kijun);
+      bool tkBear = RequireTKCross ? ((tenkan<kijun)&&(t2>k2)) : (tenkan<kijun);
+      // Cassure optionnelle
+      bool brkBull = !RequireBreakout || (hh>0 && c1>hh);
+      bool brkBear = !RequireBreakout || (ll>0 && c1<ll);
+      if(bull && !inKumo && tkBull && brkBull &&
          Score(bull,aboveK,aboveKj,true,atr)>=MinConfirmations && (stack==1||stack==99))
       { double sl=c1-ATR_SL_Mult*atr, tp=c1+ATR_TP_Mult*atr; TryOpen(1,sl,tp,"_B_L"); return; }
-      if(bear && !inKumo && cBear && ll>0 && c1<ll &&
+      if(bear && !inKumo && tkBear && brkBear &&
          Score(bear,belowK,belowKj,true,atr)>=MinConfirmations && (stack==-1||stack==99))
       { double sl=c1+ATR_SL_Mult*atr, tp=c1-ATR_TP_Mult*atr; TryOpen(-1,sl,tp,"_B_S"); return; }
    }
