@@ -21,7 +21,7 @@
 //|   ⚠ AUCUN systeme ne gagne CHAQUE semaine.                        |
 //+==================================================================+
 #property copyright "FusionBTC"
-#property version   "1.20"
+#property version   "1.30"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -72,7 +72,7 @@ input int    St_SMA200      = 200;
 input group "=== ATR / SL / TP ==="
 input int    ATR_Period     = 14;
 input double ATR_SL_Mult    = 1.8;      // ★ optimise
-input double ATR_TP_Mult    = 3.0;      // ★ optimise (etait 3.6)
+input double ATR_TP_Mult    = 1.5;      // ★ v1.3 : 1.5xATR (WR 60%, PF 1.50, OOS 1.81) - etait 3.0
 input double ATR_MinThreshold = 0.8;
 input int    MinConfirmations = 3;      // ★ optimise
 
